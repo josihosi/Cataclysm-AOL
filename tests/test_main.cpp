@@ -92,7 +92,7 @@ static std::vector<mod_id> extract_mod_selection( const std::string_view mod_str
 
 static void init_global_game_state( const std::vector<mod_id> &mods,
                                     option_overrides_t &option_overrides,
-                                    const std::string &user_dir )
+                                    const std::string &user_dir, bool saved_world_replay )
 {
     if( !assure_dir_exist( user_dir ) ) {
         // NOLINTNEXTLINE(misc-static-assert,cert-dcl03-c)
@@ -133,11 +133,18 @@ static void init_global_game_state( const std::vector<mod_id> &mods,
     init_colors();
 
     g = std::make_unique<game>( );
-    g->new_game = true;
+    if( !saved_world_replay ) {
+        g->new_game = true;
+    }
     g->load_static_data();
 
     world_generator->set_active_world( nullptr );
     world_generator->init();
+    if( saved_world_replay ) {
+        // Let the saved world's loader initialize data and actors from the
+        // original mods and save instead of first creating a synthetic world.
+        return;
+    }
     // Using unicode characters in the world name to test path encoding
 #ifndef _WIN32
     const std::string test_world_name = "Test World 测试世界 " + std::to_string( getpid() );
@@ -229,7 +236,9 @@ struct CataListener : Catch::TestEventListenerBase {
                                         "nogame" ) != testInfo.tags.end();
             if( !is_nogame ) {
                 try {
-                    init_global_game_state( mods, option_overrides_for_test_suite, user_dir );
+                    const bool saved_world_replay = std::find( testInfo.tags.begin(), testInfo.tags.end(),
+                                                    "world2_dispatch_replay" ) != testInfo.tags.end();
+                    init_global_game_state( mods, option_overrides_for_test_suite, user_dir, saved_world_replay );
                 } catch( ... ) {
                     DebugLog( D_INFO, DC_ALL ) << "Fail to initialize global game state"
                                                << std::endl;
@@ -496,7 +505,7 @@ int main( int argc, const char *argv[] )
         return EXIT_FAILURE;
     }
 
-    if( game_initialized && world_generator ) {
+    if( game_initialized && world_generator && world_generator->active_world ) {
         std::string world_name = world_generator->active_world->world_name;
         if( result == 0 || dont_save || fail_to_init_game_state ) {
             world_generator->delete_world( world_name, true );

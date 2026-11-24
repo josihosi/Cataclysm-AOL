@@ -50,6 +50,7 @@
 #include "monster.h"
 #include "mtype.h"
 #include "mutation.h"
+#include "npc_home_body.h"
 #include "options.h"
 #include "output.h"
 #include "pimpl.h"
@@ -1839,7 +1840,7 @@ bool Character::irradiate( float rads, bool bypass )
     return false;
 }
 
-void Character::mend( int rate_multiplier )
+void Character::mend( int rate_multiplier, const npc_home_body_context *home )
 {
     // Wearing splints can slowly mend a broken limb back to 1 hp.
     bool any_broken = false;
@@ -1876,14 +1877,14 @@ void Character::mend( int rate_multiplier )
     }
 
     // Bed rest speeds up mending
-    if( has_effect( effect_sleep ) ) {
+    if( home ? home->asleep : has_effect( effect_sleep ) ) {
         healing_factor *= 4.0;
     } else if( get_sleepiness() > sleepiness_levels::DEAD_TIRED ) {
         // but being dead tired does not...
         healing_factor *= 0.75;
     } else {
         // If not dead tired, resting without sleep also helps
-        healing_factor *= 1.0f + rest_quality();
+        healing_factor *= 1.0f + rest_quality( home );
     }
 
     // Being healthy helps.

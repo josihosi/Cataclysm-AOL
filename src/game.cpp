@@ -1205,6 +1205,85 @@ bool abstract_scout_owns_npc( const npc &member )
 }
 } // namespace
 
+// Resolve only the two selected offscreen-home world outcomes on the actual
+// local bubble.  They belong to the world, not to the NPC that earned them.
+static void apply_pending_home_world_events( map &here )
+{
+    if( &here != &reality_bubble() || &here != &get_map() ) {
+        return;
+    }
+    static thread_local bool applying = false;
+    if( applying ) {
+        return;
+    }
+    applying = true;
+    on_out_of_scope release( [&]() {
+        applying = false;
+    } );
+    constexpr int rift_radius = 6;
+    // is_cornerfloor reads each candidate's adjacent terrain.
+    constexpr int rift_geometry_radius = rift_radius + 1;
+    auto &events = overmap_buffer.global_state.bandit_live_world.pending_home_world_events;
+    const auto pending = events;
+    for( const auto &event : pending ) {
+        const auto pos = here.get_bub( event.origin );
+        if( !here.is_tile_loaded( pos ) ) {
+            continue;
+        }
+        if( event.kind == bandit_live_world::home_world_event_kind::tindalos_rift ) {
+            const tripoint_bub_ms low = pos - point( rift_geometry_radius, rift_geometry_radius );
+            const tripoint_bub_ms high = pos + point( rift_geometry_radius, rift_geometry_radius );
+            if( !here.inbounds( low ) || !here.inbounds( high ) ) {
+                continue;
+            }
+            const auto geometry = here.points_in_rectangle( low, high );
+            if( !std::all_of( geometry.begin(), geometry.end(), [&]( const auto &tile ) {
+            return here.is_tile_loaded( tile );
+            } ) ) {
+                continue;
+            }
+        }
+        bool applied = false;
+        if( event.kind == bandit_live_world::home_world_event_kind::fungal_spore ) {
+            // A cap or a native placement refusal is not a realized creature.
+            // Retain the same selected outcome for a later local attempt.
+            if( g->num_creatures() < 250 ) {
+                applied = g->place_critter_at( mtype_id( "mon_spore" ), pos ) != nullptr;
+            }
+        } else {
+            std::vector<tripoint_bub_ms> corners;
+            for( const auto &tile : here.points_in_radius( pos, rift_radius ) ) {
+                if( here.is_cornerfloor( tile ) ) {
+                    corners.push_back( tile );
+                }
+            }
+            // For a gas, loaded destinations and a valid intensity satisfy
+            // add_field's placement checks. Run player field reactions only
+            // once all corners have been written so they cannot split the event.
+            const field_type_id rift = fd_tindalos_rift.id();
+            if( !corners.empty() && rift && rift->phase == phase_id::GAS &&
+                rift->get_max_intensity() > 0 ) {
+                applied = true;
+                Character &player = get_player_character();
+                const bool hit_player = std::find( corners.begin(), corners.end(),
+                                                   player.pos_bub( here ) ) != corners.end();
+                for( const auto &tile : corners ) {
+                    applied = here.add_field( tile, rift, 3, 0_turns, false ) && applied;
+                }
+                if( applied && hit_player ) {
+                    here.creature_in_field( player );
+                }
+            }
+        }
+        if( !applied ) {
+            continue;
+        }
+        events.erase( std::remove_if( events.begin(), events.end(), [&]( const auto &entry ) {
+            return entry.id == event.id;
+        } ), events.end() );
+    }
+}
+
 void game::load_npcs()
 {
     load_npcs( &get_map() );
@@ -1212,6 +1291,7 @@ void game::load_npcs()
 
 void game::load_npcs( map *here )
 {
+    apply_pending_home_world_events( *here );
     const int mapsize = here->getmapsize();
     // Cover the receiving map, independently of the player's position. The
     // square query may include one extra submap for even map sizes; the exact
@@ -1252,6 +1332,76 @@ void game::load_npcs( map *here )
 
         add_msg_debug( debugmode::DF_NPC, "game::load_npcs: Spawning static NPC, %s %s",
                        abs_sub.to_string_writable(), sm_loc.to_string_writable() );
+        if( temp->pending_home_death ) {
+            const npc_home_pending_death &pending = *temp->pending_home_death;
+            const bool effect_kill = pending.effect_phase == "effect_kill";
+            const bool body_completed = pending.effect_phase == "body_completed";
+            bool valid_interval = pending.applied_until == pending.work_end && !pending.resume_at;
+            if( pending.from_body_interval ) {
+                valid_interval = pending.applied_until <= pending.work_end &&
+                                 pending.work_end <= calendar::turn;
+                if( effect_kill ) {
+                    valid_interval = valid_interval && !pending.resume_at &&
+                                     pending.work_end - pending.applied_until < 5_minutes;
+                } else if( body_completed ) {
+                    const bool fungal_damage = pending.cause == "fungal_infection" &&
+                                               pending.additional_physiological_causes.empty() &&
+                                               pending.resume_at == pending.applied_until;
+                    valid_interval = valid_interval && ( pending.has_physiological_causes() || fungal_damage ) &&
+                                     temp->is_dead() && pending.resume_at &&
+                                     *pending.resume_at >= pending.applied_until &&
+                                     *pending.resume_at <= pending.applied_until + 1_turns &&
+                                     *pending.resume_at <= pending.work_end;
+                }
+            }
+            if( here != &reality_bubble() || pending.position != temp->pos_abs() ||
+                !here->inbounds( pending.position ) ||
+                ( !body_completed && !effect_kill ) ||
+                ( effect_kill && ( pending.effect.is_null() || pending.next_effect_index < 1 ||
+                                  !pending.additional_physiological_causes.empty() ) ) ||
+                pending.pending_removals.size() != pending.pending_removal_parts.size() ||
+                !valid_interval || !pending.has_supported_queued_effects() ||
+                temp->get_last_updated() != pending.applied_until ) {
+                continue;
+            }
+            // NPC_DEATH EOCs may reenter the loader. Keep the decision pending
+            // during callbacks, but never run it twice in the same invocation.
+            static thread_local std::set<character_id> resolving_home_deaths;
+            if( !resolving_home_deaths.insert( id ).second ) {
+                continue;
+            }
+            on_out_of_scope release_pending( [&]() {
+                resolving_home_deaths.erase( id );
+            } );
+            temp->restore_home_effect_queue( pending );
+            temp->resolve_pending_home_death( here );
+            if( effect_kill ) {
+                temp->resume_home_effect_decay( pending, *here );
+            }
+            if( pending.from_body_interval && !temp->is_dead() ) {
+                temp->resume_home_body_after_prevention( pending );
+            }
+            temp->pending_home_death.reset();
+            if( temp->is_dead() ) {
+                for( auto &site : overmap_buffer.global_state.bandit_live_world.sites ) {
+                    const auto *member = site.find_member( id );
+                    if( member && member->state == bandit_live_world::member_state::at_home &&
+                        ( temp->pos_abs_omt() == site.anchor ||
+                          std::find( site.footprint.begin(), site.footprint.end(),
+                                     temp->pos_abs_omt() ) != site.footprint.end() ) ) {
+                        bandit_live_world::advance_camp_supply( site,
+                                to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ) );
+                        bandit_live_world::update_member_state( site, id, bandit_live_world::member_state::dead,
+                                                               "home body died on local resolution" );
+                        break;
+                    }
+                }
+                // Keep the ordinary active-death cleanup owner; a repeated
+                // load must not re-admit or resolve this body a second time.
+                critter_tracker->active_npc.push_back( temp );
+                continue;
+            }
+        }
         temp->place_on_map( here );
         if( !here->inbounds( temp->pos_abs() ) ) {
             continue;

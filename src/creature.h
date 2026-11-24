@@ -46,6 +46,7 @@ class body_part_set;
 class const_talker;
 class effect;
 class effects_map;
+struct npc_home_pending_death;
 class enchant_cache;
 class field;
 class field_entry;
@@ -248,11 +249,15 @@ using scheduled_effect = struct scheduled_effect_t {
     int intensity = 0;
     bool force = false;
     bool deferred = false;
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &data );
 };
 
 using terminating_effect = struct terminating_effect_t {
     efftype_id eff_id;
     bodypart_id bp;
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &data );
 };
 
 class creature_identity
@@ -750,6 +755,7 @@ class Creature : public viewer
 
         /** Processes through all the effects on the Creature. */
         virtual void process_effects();
+        void resume_home_effect_decay( const npc_home_pending_death &pending, map &here );
 
         /** Returns true if the player has the entered trait, returns false for non-humans */
         virtual bool has_trait( const trait_id &flag ) const;

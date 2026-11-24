@@ -74150,6 +74150,11 @@ auto r067_native_cadence_body_key( const npc &actor )
                             items, effects, actor.get_moves(), actor.get_last_updated(), actor.is_dead() );
 }
 
+static constexpr time_duration fatal_home_probe_interval = 4_minutes + 1_turns;
+static constexpr time_duration lethal_body_probe_interval = 6_minutes + 1_turns;
+static constexpr time_duration single_step_body_probe_interval = 5_minutes;
+static constexpr time_duration single_step_applied = single_step_body_probe_interval - 1_turns;
+
 // A new camp, not a retained/completed outing. Only terrain and a physical fire
 // source are fixture inputs. The production sampler, home observer, roster
 // allocator, planner and NPC motors must create all knowledge and travel state.
@@ -74366,7 +74371,8 @@ class r067_fresh_scout_journey
         void start( const bool cannibal, const bool stay_at_source = false,
                     const bool conceal_avatar = false, const bool unarmed_encounter = false,
                     const bool with_peer = false, const int admission_case = 0,
-                    const bool diagonal_watch_approach = false ) {
+                    const bool diagonal_watch_approach = false,
+                    detailed_map_entry_counts *admission_counts = nullptr ) {
             using namespace bandit_live_world;
             clear_avatar();
             clear_npcs();
@@ -74454,6 +74460,20 @@ class r067_fresh_scout_journey
             REQUIRE_FALSE( site().active_outing.is_active() );
             character_id excluded_id;
             time_point displaced_updated = calendar::turn;
+            std::map<character_id, tripoint_abs_ms> ordinary_probe_positions;
+            const bool exhausted_home_probe = admission_case == 13;
+            const bool vomiting_home_probe = admission_case == 14;
+            const bool ordinary_needs_probe = exhausted_home_probe || vomiting_home_probe;
+            const bool fungal_home_probe = admission_case == 15;
+            const bool rift_home_probe = admission_case == 16;
+            const bool fungal_chest_probe = admission_case == 18;
+            const bool fungal_rupture_probe = admission_case == 17 || fungal_chest_probe;
+            const bool world_event_probe = fungal_home_probe || rift_home_probe;
+            std::optional<tripoint_abs_ms> known_rift_origin;
+            const bool single_step_body_probe = admission_case == 11 || admission_case == 12;
+            const bool lethal_body_probe = admission_case == 9 || admission_case == 10 ||
+                                           single_step_body_probe;
+            const bool fatal_home_probe = admission_case == 7 || admission_case == 8 || lethal_body_probe;
             if( admission_case == 1 || admission_case == 2 || admission_case == 4 ) {
                 // Three genuine home bodies remain available. The fourth is a
                 // tracked missing, displaced, or incapacitated resident.
@@ -74496,6 +74516,26 @@ class r067_fresh_scout_journey
                     site().members.pop_back();
                 }
             }
+            if( admission_case == 5 ) {
+                excluded_id = site().members.back().npc_id;
+                auto pending_actor = overmap_buffer.find_npc( excluded_id );
+                REQUIRE( pending_actor );
+                refresh_live_bandit_activation();
+                REQUIRE( site().home_activation.bodies.count( excluded_id ) == 1 );
+                const auto previous_anchor = site().home_activation.bodies.at( excluded_id ).world_turn;
+                pending_actor->set_part_hp_cur( bodypart_id( "torso" ), 0 );
+                npc_home_pending_death pending;
+                pending.position = pending_actor->pos_abs();
+                pending.applied_until = pending_actor->get_last_updated();
+                pending.work_end = calendar::turn;
+                pending.cause = "test_selected_body_death";
+                pending.effect_phase = "body_completed";
+                pending_actor->pending_home_death = pending;
+                calendar::turn += 1_turns;
+                refresh_live_bandit_activation();
+                REQUIRE( site().home_activation.bodies.count( excluded_id ) == 1 );
+                CHECK( site().home_activation.bodies.at( excluded_id ).world_turn == previous_anchor );
+            }
             if( with_peer ) {
                 REQUIRE( packet.front().range_cap_omt >= rl_dist( peer_home, target ) );
                 REQUIRE( peer_site().members.size() >= 3 );
@@ -74525,11 +74565,318 @@ class r067_fresh_scout_journey
                                   std::to_string( reference.sight_range( light, g->natural_light_level( 0 ) ) ) + " ";
             }
             INFO( "actual planning view=" << planning_basis );
-            maintain_live_bandit_structural_bounty_for_test( packet );
+            if( admission_counts ) {
+                if( admission_case == 6 || fatal_home_probe || ordinary_needs_probe ||
+                    world_event_probe || fungal_rupture_probe ) {
+                    if( single_step_body_probe ) {
+                        // Offset body time by one real body turn after the native signal sample.
+                        // The lethal five-minute boundary then falls in the driver's single-turn tail.
+                        calendar::turn += 1_turns;
+                    }
+                    for( const auto &member : site().members ) {
+                        const auto actor = overmap_buffer.find_npc( member.npc_id );
+                        REQUIRE( actor );
+                        actor->clear_effects();
+                        actor->set_sleepiness( 0 );
+                        actor->set_sleep_deprivation( 0 );
+                        actor->set_stim( 0 );
+                        actor->set_painkiller( 0 );
+                        if( single_step_body_probe ) {
+                            actor->update_body();
+                        }
+                        REQUIRE( actor->hp_percentage() == 100 );
+                        ordinary_probe_positions.emplace( member.npc_id, actor->pos_abs() );
+                    }
+                    refresh_live_bandit_activation();
+                    if( world_event_probe || fungal_rupture_probe ) {
+                        const auto actor = overmap_buffer.find_npc( site().members.front().npc_id );
+                        REQUIRE( actor );
+                        if( !rift_home_probe && actor->is_armed() ) {
+                            actor->i_add( actor->remove_weapon() );
+                        }
+                        if( fungal_chest_probe ) {
+                            excluded_id = actor->getID();
+                            actor->set_mutation( trait_id( "BIONIC_ARM_BASIC_BOTH" ) );
+                            actor->set_mutation( trait_id( "FLIMSY3" ) );
+                            REQUIRE( actor->hp_percentage() == 100 );
+                            item token( itype_id( "rock" ) );
+                            token.set_var( "deferred_home_death", "fungal_chest" );
+                            actor->i_add( token );
+                        }
+                        if( rift_home_probe ) {
+                            // Prepare and verify the one supported rift premise before measuring admission.
+                            tinymap physical;
+                            physical.load( actor->pos_abs_omt(), false );
+                            map &footprint = *physical.cast_to_map();
+                            const auto pos = footprint.get_bub( actor->pos_abs() );
+                            const tripoint_bub_ms corner( std::clamp( pos.x(), 2, SEEX * 2 - 3 ),
+                                                          std::clamp( pos.y(), 2, SEEY * 2 - 3 ), pos.z() );
+                            footprint.ter_set( corner, ter_id( "t_floor" ) );
+                            footprint.ter_set( corner + tripoint( -1, 0, 0 ), ter_id( "t_wall" ) );
+                            footprint.ter_set( corner + tripoint( 0, -1, 0 ), ter_id( "t_wall" ) );
+                            footprint.ter_set( corner + tripoint( -1, -1, 0 ), ter_id( "t_wall" ) );
+                            REQUIRE( footprint.is_cornerfloor( corner ) );
+                            REQUIRE( rl_dist( corner, pos ) <= 6 );
+                            physical.save();
+                            known_rift_origin = actor->pos_abs();
+                        }
+                        actor->add_effect( effect_source::empty(),
+                                           efftype_id( rift_home_probe ? "tindrift" : "fungus" ),
+                                           rift_home_probe ? 1_minutes : 18_hours, false, 0, false, true );
+                    }
+                    if( ordinary_needs_probe ) {
+                        excluded_id = site().members.back().npc_id;
+                        const auto actor = overmap_buffer.find_npc( excluded_id );
+                        REQUIRE( actor );
+                        actor->stomach.empty();
+                        actor->guts.empty();
+                        if( exhausted_home_probe ) {
+                            actor->set_stored_kcal( actor->get_healthy_kcal() );
+                            actor->add_effect( efftype_id( "hunger_full" ), 20_minutes, true );
+                            actor->set_sleepiness( sleepiness_levels::MASSIVE_SLEEPINESS );
+                            actor->add_effect( efftype_id( "test_vitamineff" ), 20_minutes );
+                            actor->schedule_effect_removal( efftype_id( "test_vitamineff" ) );
+                            actor->schedule_effect( efftype_id( "lack_sleep" ), 10_minutes );
+                        } else {
+                            actor->stomach.ingest( { 0_ml, 250_ml, {} } );
+                            actor->set_sleepiness( sleepiness_levels::EXHAUSTED );
+                            actor->fall_asleep( 10_minutes );
+                            // Intensity four can cause emesis but is below the lethal needs check.
+                            actor->add_effect( effect_source::empty(), efftype_id( "drunk" ), 310_minutes,
+                                               false, 0, false, true );
+                            REQUIRE( actor->get_effect_int( efftype_id( "drunk" ) ) == 4 );
+                            REQUIRE( actor->stomach.contains() == 250_ml );
+                        }
+                    }
+                    if( fatal_home_probe ) {
+                        excluded_id = site().members.back().npc_id;
+                        const auto actor = overmap_buffer.find_npc( excluded_id );
+                        REQUIRE( actor );
+                        REQUIRE( actor->get_last_updated() == calendar::turn );
+                        REQUIRE( ( calendar::turn - calendar::turn_zero ) % 1_minutes ==
+                                 ( single_step_body_probe ? 1_turns : 0_turns ) );
+                        if( single_step_body_probe ) {
+                            // Native decay leaves this above the overdose threshold at the body boundary.
+                            actor->add_effect( efftype_id( "adrenaline" ), 56_minutes );
+                        } else if( lethal_body_probe ) {
+                            // The actor is alive until the native five-minute body batch.
+                            actor->set_stim( 251 );
+                            actor->add_effect( efftype_id( "sleep_deprived" ), 8_minutes );
+                            actor->schedule_effect_removal( efftype_id( "sleep_deprived" ) );
+                            actor->schedule_effect( efftype_id( "lack_sleep" ), 10_minutes );
+                        } else {
+                            const bodypart_id torso( "torso" );
+                            const efftype_id fatalism( "test_fatalism" );
+                            actor->add_effect( effect_source( &get_avatar() ), fatalism, 1_turns, torso,
+                                               false, 3 );
+                            // Select death on the same decay pass that removes the effect.
+                            actor->get_effect( fatalism, torso ).set_duration( 0_turns );
+                        }
+                        actor->add_effect( efftype_id( "test_vitamineff" ), lethal_body_probe ? 8_minutes : 6_minutes );
+                        actor->set_focus( 1 );
+                        if( admission_case == 8 || admission_case == 10 || admission_case == 12 ) {
+                            actor->death_eocs.push_back( effect_on_condition_id( "EOC_event_NPC_DEATH_test" ) );
+                        }
+                        item token( itype_id( "rock" ) );
+                        token.set_var( "deferred_home_death", "dispatch" );
+                        actor->i_add( token );
+                    }
+                    calendar::turn += ( world_event_probe || fungal_rupture_probe ) ? fatal_home_probe_interval :
+                                      exhausted_home_probe ? 5_minutes + 1_turns :
+                                      vomiting_home_probe ? fatal_home_probe_interval :
+                                      single_step_body_probe ? single_step_body_probe_interval :
+                                      lethal_body_probe ? lethal_body_probe_interval :
+                                      fatal_home_probe ? fatal_home_probe_interval : 1_hours;
+                } else {
+                    calendar::turn += 5_minutes;
+                }
+                refresh_live_bandit_activation();
+                set_ordinary_home_probe_for_test(
+                    admission_case == 6 || fatal_home_probe || ordinary_needs_probe ||
+                    world_event_probe || fungal_rupture_probe,
+                    known_rift_origin );
+                on_out_of_scope reset_probe( []() {
+                    set_ordinary_home_probe_for_test( false );
+                    set_first_npc_home_effect_turn_for_test( character_id(), nullptr );
+                } );
+                scoped_detailed_map_entry_counter count_admission( *admission_counts );
+                const auto old_rng = rng_get_engine();
+                on_out_of_scope restore_rng( [&]() {
+                    if( fungal_home_probe || fungal_rupture_probe ) {
+                        rng_get_engine() = old_rng;
+                    }
+                } );
+                if( fungal_chest_probe ) {
+                    set_first_npc_home_effect_turn_for_test( excluded_id, []( const npc &actor ) {
+                        const auto effects = actor.get_effects();
+                        REQUIRE( effects.size() == 1 );
+                        const effect &fungus = effects.front();
+                        REQUIRE( fungus.get_id() == efftype_id( "fungus" ) );
+                        REQUIRE( fungus.get_intensity() == 3 );
+                        REQUIRE( actor.has_part( bodypart_id( "robofac_arm_bionic_basic_l" ) ) );
+                        const int torso_hp = actor.get_part_hp_cur( bodypart_id( "torso" ) );
+                        REQUIRE( torso_hp > 0 );
+                        REQUIRE( torso_hp <= 40 );
+                        const int bonus = actor.get_lifestyle() / 10 +
+                                          ( actor.resists_effect( fungus ) ? 100 : 0 );
+                        unsigned chosen = 0;
+                        for( unsigned seed = 1; seed < 200000 && chosen == 0; ++seed ) {
+                            rng_set_engine_seed( seed );
+                            if( !one_in( 6000 + bonus * 48 ) && one_in( 36000 + bonus * 240 ) ) {
+                                chosen = seed;
+                            }
+                        }
+                        REQUIRE( chosen != 0 );
+                        rng_set_engine_seed( chosen );
+                    } );
+                } else if( fungal_home_probe || fungal_rupture_probe ) {
+                    const auto actor = overmap_buffer.find_npc( site().members.front().npc_id );
+                    REQUIRE( actor );
+                    const auto &fungus = actor->get_effect( efftype_id( "fungus" ) );
+                    const int bonus = actor->get_lifestyle() / 10 +
+                                      ( actor->resists_effect( fungus ) ? 100 : 0 );
+                    const int denominator = 6000 + bonus * 48;
+                    unsigned chosen = 0;
+                    for( unsigned seed = 1; seed < 200000 && chosen == 0; ++seed ) {
+                        rng_set_engine_seed( seed );
+                        if( one_in( denominator ) ) {
+                            if( fungal_rupture_probe ) {
+                                continue;
+                            }
+                            for( int neighbor = 0; neighbor < 8; ++neighbor ) {
+                                if( one_in( 4 ) ) {
+                                    chosen = seed;
+                                    break;
+                                }
+                            }
+                        } else if( fungal_rupture_probe && one_in( 36000 + bonus * 240 ) ) {
+                            chosen = seed;
+                        }
+                    }
+                    REQUIRE( chosen != 0 );
+                    rng_set_engine_seed( chosen );
+                }
+                maintain_live_bandit_structural_bounty_for_test( packet );
+                if( fungal_rupture_probe ) {
+                    CHECK( admission_counts->regions_entered > 0 );
+                    CHECK( admission_counts->region_loads == 0 );
+                    CHECK( admission_counts->region_saves == 0 );
+                    CHECK( world().pending_home_world_events.empty() );
+                } else if( world_event_probe ) {
+                    CHECK( admission_counts->regions_entered > 0 );
+                    CHECK( admission_counts->region_loads == 0 );
+                    CHECK( admission_counts->region_saves == 0 );
+                    REQUIRE_FALSE( world().pending_home_world_events.empty() );
+                } else if( ordinary_needs_probe ) {
+                    CHECK( admission_counts->regions_entered > 0 );
+                    CHECK( admission_counts->region_loads == 0 );
+                    CHECK( admission_counts->region_saves == 0 );
+                    const auto actor = overmap_buffer.find_npc( excluded_id );
+                    REQUIRE( actor );
+                    CHECK( actor->get_last_updated() == calendar::turn );
+                    CHECK( actor->pos_abs() == ordinary_probe_positions.at( excluded_id ) );
+                    CHECK_FALSE( actor->pending_home_death );
+                    if( exhausted_home_probe ) {
+                        CHECK( actor->is_involuntarily_asleep() );
+                        CHECK( actor->get_sleepiness() < sleepiness_levels::MASSIVE_SLEEPINESS );
+                        CHECK( actor->get_stored_kcal() < actor->get_healthy_kcal() );
+                        CHECK_FALSE( actor->has_effect( efftype_id( "hunger_full" ) ) );
+                        CHECK( actor->get_effect_dur( efftype_id( "lack_sleep" ) ) == 10_minutes );
+                        CHECK_FALSE( actor->has_effect( efftype_id( "test_vitamineff" ) ) );
+                    } else {
+                        CHECK( actor->stomach.contains() == 0_ml );
+                        CHECK_FALSE( actor->in_sleep_state() );
+                    }
+                } else if( fatal_home_probe ) {
+                    CHECK( admission_counts->regions_entered > 0 );
+                    CHECK( admission_counts->region_loads == 0 );
+                    CHECK( admission_counts->region_saves == 0 );
+                    const auto actor = overmap_buffer.find_npc( excluded_id );
+                    REQUIRE( actor );
+                    REQUIRE( actor->pending_home_death );
+                    const auto &pending = *actor->pending_home_death;
+                    CHECK( pending.position == ordinary_probe_positions.at( excluded_id ) );
+                    CHECK( pending.applied_until == actor->get_last_updated() );
+                    CHECK( pending.work_end == calendar::turn );
+                    CHECK( pending.from_body_interval );
+                    if( lethal_body_probe ) {
+                        REQUIRE( pending.resume_at );
+                        if( single_step_body_probe ) {
+                            CHECK( pending.applied_until == calendar::turn - 1_turns );
+                            CHECK( *pending.resume_at == pending.applied_until );
+                            CHECK( pending.cause == "adrenaline_overdose" );
+                            CHECK( actor->get_effect_dur( efftype_id( "adrenaline" ) ) ==
+                                   56_minutes - single_step_applied );
+                        } else {
+                            CHECK( pending.applied_until == calendar::turn - lethal_body_probe_interval + 5_minutes );
+                            CHECK( *pending.resume_at == pending.applied_until + 1_turns );
+                            CHECK( pending.cause == "stimulant_overdose" );
+                            CHECK( actor->get_stim() == 250 );
+                        }
+                        CHECK( pending.effect_phase == "body_completed" );
+                        CHECK_FALSE( pending.source.get_character_id() );
+                        CHECK( actor->get_part_hp_cur( bodypart_id( "torso" ) ) == 0 );
+                        CHECK( actor->get_effect_dur( efftype_id( "test_vitamineff" ) ) ==
+                               8_minutes - ( single_step_body_probe ? single_step_applied : 5_minutes ) );
+                    } else {
+                        CHECK( pending.applied_until == calendar::turn - fatal_home_probe_interval + 1_turns );
+                        CHECK( pending.effect == efftype_id( "test_fatalism" ) );
+                        CHECK( pending.source.get_character_id() == get_avatar().getID() );
+                        CHECK( actor->get_effect_dur( efftype_id( "test_vitamineff" ) ) == 6_minutes );
+                        CHECK( actor->get_focus() == 1 );
+                    }
+                } else if( admission_case == 6 ) {
+                    CHECK( ordinary_home_probe_successes_for_test() >= 2 );
+                    CHECK( admission_counts->regions_entered > 0 );
+                    CHECK( admission_counts->region_loads == 0 );
+                    CHECK( admission_counts->region_saves == 0 );
+                    for( const auto &entry : ordinary_probe_positions ) {
+                        const auto actor = overmap_buffer.find_npc( entry.first );
+                        REQUIRE( actor );
+                        CHECK( actor->getID() == entry.first );
+                        CHECK( actor->pos_abs() == entry.second );
+                        CHECK( actor->get_last_updated() == calendar::turn );
+                        CHECK_FALSE( actor->has_effect( efftype_id( "sleep" ) ) );
+                    }
+                    const int completed = ordinary_home_probe_successes_for_test();
+                    maintain_live_bandit_structural_bounty_for_test( packet );
+                    CHECK( ordinary_home_probe_successes_for_test() == completed );
+                    CHECK( admission_counts->region_loads == 0 );
+                    CHECK( admission_counts->region_saves == 0 );
+                    for( const auto &entry : ordinary_probe_positions ) {
+                        const auto actor = overmap_buffer.find_npc( entry.first );
+                        REQUIRE( actor );
+                        CHECK( actor->get_last_updated() == calendar::turn );
+                    }
+                }
+            } else {
+                maintain_live_bandit_structural_bounty_for_test( packet );
+            }
             REQUIRE( site().active_outing.is_active() );
             const auto &outing = site().active_outing;
             REQUIRE( outing.kind == outing_kind::structural_sortie );
             REQUIRE( outing.member_ids.size() == 2 );
+            if( exhausted_home_probe ) {
+                CHECK( std::find( outing.member_ids.begin(), outing.member_ids.end(), excluded_id ) ==
+                       outing.member_ids.end() );
+                const auto *member = site().find_member( excluded_id );
+                REQUIRE( member );
+                CHECK( member->state == member_state::at_home );
+                CHECK( member->wounded_or_unready );
+            }
+            if( admission_case == 5 || fatal_home_probe || fungal_chest_probe ) {
+                CHECK( std::find( outing.member_ids.begin(), outing.member_ids.end(), excluded_id ) ==
+                       outing.member_ids.end() );
+                const auto *excluded = site().find_member( excluded_id );
+                REQUIRE( excluded );
+                CHECK( excluded->state == member_state::at_home );
+                CHECK( excluded->wounded_or_unready );
+                const auto pending_actor = overmap_buffer.find_npc( excluded_id );
+                REQUIRE( pending_actor );
+                CHECK( pending_actor->pending_home_death.has_value() );
+                CHECK( pending_actor->is_dead() == ( !fatal_home_probe || lethal_body_probe ) );
+                CHECK_FALSE( pending_actor->marked_for_death );
+            }
             if( admission_case == 1 || admission_case == 2 || admission_case == 4 ) {
                 CHECK( std::find( outing.member_ids.begin(), outing.member_ids.end(), excluded_id ) ==
                        outing.member_ids.end() );
@@ -77013,6 +77360,615 @@ TEST_CASE( "live home admission authenticates available and newly materialized m
     CAPTURE( admission_case );
     r067_fresh_scout_journey journey;
     journey.start( false, false, false, false, false, admission_case );
+}
+
+TEST_CASE( "unresolved home death holds only its own admission",
+           "[bandit][live_world][pending_home_death]" )
+{
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, false, false, false, 5 );
+}
+
+TEST_CASE( "ordinary one-hour home admission uses no detailed map entries in the test probe",
+           "[bandit][live_world][ordinary_home_probe]" )
+{
+    override_option no_food( "NO_NPC_FOOD", "true" );
+    detailed_map_entry_counts counts;
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, false, false, false, 6, false, &counts );
+}
+
+TEST_CASE( "unloaded home admission preserves ordinary food, sleep and vomiting transitions",
+           "[bandit][live_world][ordinary_home_needs]" )
+{
+    const bool exhausted = GENERATE( true, false );
+    CAPTURE( exhausted );
+    override_option food( "NO_NPC_FOOD", exhausted ? "false" : "true" );
+    detailed_map_entry_counts counts;
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, false, false, false, exhausted ? 13 : 14, false, &counts );
+    const character_id id = journey.site().members.back().npc_id;
+    const auto peers = journey.members();
+    const auto world_name = world_generator->active_world->world_name;
+    const auto count_event = [&]( event_type type, const std::optional<efftype_id> &effect = std::nullopt ) {
+        int result = 0;
+        for( const auto &entry : get_stats().get_events( type ).counts() ) {
+            const auto character = entry.first.find( "character" );
+            if( character != entry.first.end() && character->second.template get<character_id>() == id ) {
+                if( effect && entry.first.at( "effect" ).template get<efftype_id>() != *effect ) {
+                    continue;
+                }
+                result += entry.second.count;
+            }
+        }
+        return result;
+    };
+    const auto hunger_effects = []( const npc &body ) {
+        std::vector<efftype_id> result;
+        for( const effect &entry : body.get_effects() ) {
+            if( entry.get_id().str().compare( 0, 7, "hunger_" ) == 0 ) {
+                result.push_back( entry.get_id() );
+            }
+        }
+        return result;
+    };
+    auto actor = overmap_buffer.find_npc( id );
+    REQUIRE( actor );
+    const auto before = actor->get_last_updated();
+    const auto before_hunger = hunger_effects( *actor );
+    const int sleep_events = count_event( event_type::falls_asleep_from_exhaustion );
+    const int vomit_events = count_event( event_type::throws_up );
+    const int wake_events = count_event( event_type::character_wakes_up );
+    const efftype_id nausea( "nausea" );
+    const int nausea_events = count_event( event_type::character_gains_effect, nausea );
+    const time_duration nausea_remaining = actor->get_effect_dur( nausea );
+    if( exhausted ) {
+        REQUIRE( before_hunger.size() == 1 );
+        CHECK( before_hunger.front() != efftype_id( "hunger_full" ) );
+        CHECK( sleep_events == 1 );
+        CHECK( vomit_events == 0 );
+    } else {
+        CHECK( vomit_events > 0 );
+        CHECK( wake_events > 0 );
+        CHECK( nausea_events > 0 );
+    }
+    const auto position = actor->pos_abs();
+    REQUIRE_FALSE( get_map().inbounds( position ) );
+    actor.reset();
+    g->save_is_dirty = false;
+    REQUIRE( g->save() );
+    r067_handover_reload( world_name );
+    actor = overmap_buffer.find_npc( id );
+    REQUIRE( actor );
+    CHECK( actor->get_last_updated() == before );
+    CHECK( actor->pos_abs() == position );
+    CHECK( hunger_effects( *actor ) == before_hunger );
+    CHECK( count_event( event_type::falls_asleep_from_exhaustion ) == sleep_events );
+    CHECK( count_event( event_type::throws_up ) == vomit_events );
+    CHECK( count_event( event_type::character_wakes_up ) == wake_events );
+    CHECK( count_event( event_type::character_gains_effect, nausea ) == nausea_events );
+    if( exhausted ) {
+        CHECK( actor->is_involuntarily_asleep() );
+        CHECK( actor->get_effect_dur( efftype_id( "lack_sleep" ) ) == 10_minutes );
+        CHECK_FALSE( actor->has_effect( efftype_id( "test_vitamineff" ) ) );
+    } else {
+        CHECK( actor->stomach.contains() == 0_ml );
+        CHECK( actor->get_effect_dur( nausea ) == nausea_remaining );
+        CHECK_FALSE( actor->in_sleep_state() );
+    }
+    CHECK( journey.site().active_outing.member_ids == peers );
+}
+
+enum class r067_home_death_setup : int {
+    effect = 7,
+    body_batch = 9,
+    body_turn = 11
+};
+
+TEST_CASE( "admission world events persist until their real local footprint is saved",
+           "[bandit][live_world][home_world_event_reload]" )
+{
+    using namespace bandit_live_world;
+    const bool fungal = GENERATE( true, false );
+    CAPTURE( fungal );
+    override_option food( "NO_NPC_FOOD", "true" );
+    detailed_map_entry_counts counts;
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, false, false, false, fungal ? 15 : 16, false, &counts );
+    const auto creator = overmap_buffer.find_npc( journey.site().members.front().npc_id );
+    REQUIRE( creator );
+    const auto origin = creator->pos_abs();
+    const auto pending = journey.world().pending_home_world_events;
+    REQUIRE_FALSE( pending.empty() );
+    for( const auto &event : pending ) {
+        CHECK( event.kind == ( fungal ? home_world_event_kind::fungal_spore :
+                              home_world_event_kind::tindalos_rift ) );
+        CHECK( rl_dist( origin, event.origin ) <= ( fungal ? 1 : 0 ) );
+        CHECK( event.id.find( std::to_string( creator->getID().get_value() ) + ":" ) == 0 );
+    }
+    const auto world_name = world_generator->active_world->world_name;
+    const auto save_reload = [&]() {
+        g->save_is_dirty = false;
+        REQUIRE( g->save() );
+        r067_handover_reload( world_name );
+    };
+    const auto check_pending = [&]() {
+        const auto &current = journey.world().pending_home_world_events;
+        REQUIRE( current.size() == pending.size() );
+        for( std::size_t index = 0; index < pending.size(); ++index ) {
+            CHECK( r067_return_record_bytes( current[index] ) ==
+                   r067_return_record_bytes( pending[index] ) );
+        }
+    };
+    journey.move_player( journey.away );
+    REQUIRE_FALSE( get_map().inbounds( origin ) );
+    check_pending();
+    save_reload();
+    check_pending();
+
+    if( !fungal ) {
+        // Load the origin on the actual bubble edge with part of the corner
+        // search missing, then enter the same place with the full neighborhood.
+        const auto origin_submap = project_to<coords::sm>( origin );
+        const int offset_x = ( origin - project_to<coords::ms>( origin_submap ) ).x();
+        g->load_map( origin_submap - point( offset_x < 7 ? 0 : MAPSIZE - 1, HALF_MAPSIZE ) );
+        map &edge = get_map();
+        const auto edge_origin = edge.get_bub( origin );
+        get_avatar().setpos( edge.get_abs( tripoint_bub_ms( HALF_MAPSIZE * SEEX,
+                                          HALF_MAPSIZE * SEEY, origin.z() + 1 ) ), false );
+        REQUIRE( edge.is_tile_loaded( edge_origin ) );
+        REQUIRE( ( !edge.inbounds( edge_origin - point( 7, 0 ) ) ||
+                   !edge.inbounds( edge_origin + point( 7, 0 ) ) ) );
+        g->load_npcs( &edge );
+        check_pending();
+        for( const auto &tile : edge.points_in_radius( edge_origin, 6 ) ) {
+            CHECK_FALSE( edge.get_field( tile, field_type_id( "fd_tindalos_rift" ) ) );
+        }
+    }
+    journey.move_player( journey.home );
+    REQUIRE( journey.world().pending_home_world_events.empty() );
+    const auto local_state = [&]() {
+        std::map<tripoint_abs_ms, int> result;
+        map &here = get_map();
+        if( fungal ) {
+            for( const auto &event : pending ) {
+                const auto *spore = get_creature_tracker().creature_at<monster>( here.get_bub( event.origin ) );
+                if( spore && spore->type->id == mtype_id( "mon_spore" ) ) {
+                    result[spore->pos_abs()] = 1;
+                }
+            }
+        } else {
+            for( const auto &tile : here.points_in_radius( here.get_bub( origin ), 6 ) ) {
+                if( const auto *rift = here.get_field( tile, field_type_id( "fd_tindalos_rift" ) ) ) {
+                    CHECK( here.is_cornerfloor( tile ) );
+                    result[here.get_abs( tile )] = rift->get_field_intensity();
+                }
+            }
+        }
+        return result;
+    };
+    const auto applied = local_state();
+    REQUIRE_FALSE( applied.empty() );
+    if( fungal ) {
+        CHECK( applied.size() == pending.size() );
+    }
+    g->load_npcs( &get_map() );
+    CHECK( local_state() == applied );
+    save_reload();
+    CHECK( journey.world().pending_home_world_events.empty() );
+    CHECK( local_state() == applied );
+}
+
+TEST_CASE( "admission fungal rupture preserves the native arm injuries",
+           "[bandit][live_world][home_fungal_rupture]" )
+{
+    override_option food( "NO_NPC_FOOD", "true" );
+    const auto saved_rng = rng_get_engine();
+    on_out_of_scope restore_rng( [&]() { rng_get_engine() = saved_rng; } );
+    rng_set_engine_seed( 124 );
+    detailed_map_entry_counts counts;
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, false, false, false, 17, false, &counts );
+    const auto id = journey.site().members.front().npc_id;
+    const auto actor = overmap_buffer.find_npc( id );
+    REQUIRE( actor );
+    CHECK( actor->get_part_hp_cur( bodypart_id( "arm_l" ) ) == 0 );
+    CHECK( actor->get_part_hp_cur( bodypart_id( "arm_r" ) ) == 0 );
+    CHECK_FALSE( actor->pending_home_death );
+    const auto world_name = world_generator->active_world->world_name;
+    journey.move_player( journey.away );
+    g->save_is_dirty = false;
+    REQUIRE( g->save() );
+    r067_handover_reload( world_name );
+    const auto restored = overmap_buffer.find_npc( id );
+    REQUIRE( restored );
+    CHECK( restored->get_part_hp_cur( bodypart_id( "arm_l" ) ) == 0 );
+    CHECK( restored->get_part_hp_cur( bodypart_id( "arm_r" ) ) == 0 );
+}
+
+TEST_CASE( "admission fungal chest death survives reload and settles once at its original tile",
+           "[bandit][live_world][home_fungal_chest_reload]" )
+{
+    using namespace bandit_live_world;
+    override_option food( "NO_NPC_FOOD", "true" );
+    detailed_map_entry_counts counts;
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, false, false, false, 18, false, &counts );
+    const character_id id = journey.site().members.front().npc_id;
+    const auto peers = journey.members();
+    const int living_before = journey.site().living_total;
+    auto actor = overmap_buffer.find_npc( id );
+    REQUIRE( actor );
+    REQUIRE( actor->pending_home_death );
+    const auto pending = *actor->pending_home_death;
+    const auto target = pending.position;
+    const auto name = actor->get_name();
+    const bodypart_id torso( "torso" );
+    const efftype_id bleed( "bleed" );
+    CHECK( pending.cause == "fungal_infection" );
+    CHECK( pending.effect_phase == "body_completed" );
+    CHECK( pending.from_body_interval );
+    CHECK_FALSE( pending.source.get_character_id() );
+    CHECK( pending.work_end == calendar::turn );
+    CHECK( pending.applied_until == pending.work_end - fatal_home_probe_interval + 1_turns );
+    CHECK( pending.resume_at == pending.applied_until );
+    REQUIRE_FALSE( get_map().inbounds( target ) );
+
+    const auto name_of_world = world_generator->active_world->world_name;
+    const auto save_reload = [&]() {
+        g->save_is_dirty = false;
+        REQUIRE( g->save() );
+        r067_handover_reload( name_of_world );
+    };
+    const auto event_count = [&]( event_type type ) {
+        int total = 0;
+        for( const auto &entry : get_stats().get_events( type ).counts() ) {
+            const auto found = entry.first.find( "character" );
+            if( found != entry.first.end() && found->second.template get<character_id>() == id ) {
+                total += entry.second.count;
+            }
+        }
+        return total;
+    };
+    const auto check_pending = [&]( const npc &body ) {
+        REQUIRE( body.pending_home_death );
+        CHECK( r067_return_record_bytes( *body.pending_home_death ) == r067_return_record_bytes( pending ) );
+        CHECK( body.pos_abs() == target );
+        CHECK( body.get_last_updated() == pending.applied_until );
+        CHECK( body.get_part_hp_cur( torso ) == 0 );
+        CHECK( body.get_effect_dur( bleed, torso ) == 30_minutes - 1_turns );
+        int carried = 0;
+        body.visit_items( [&]( const item *value, const item * ) {
+            carried += value->get_var( "deferred_home_death" ) == "fungal_chest";
+            return VisitResponse::NEXT;
+        } );
+        CHECK( carried == 1 );
+        CHECK( event_count( event_type::character_dies ) == 0 );
+        CHECK( journey.site().active_outing.member_ids == peers );
+        CHECK( journey.site().living_total == living_before );
+    };
+    check_pending( *actor );
+    journey.move_player( journey.away );
+    REQUIRE_FALSE( get_map().inbounds( target ) );
+    check_pending( *actor );
+    actor.reset();
+    save_reload();
+    actor = overmap_buffer.find_npc( id );
+    REQUIRE( actor );
+    check_pending( *actor );
+
+    journey.move_player( journey.home );
+    REQUIRE( get_map().is_tile_loaded( get_map().get_bub( target ) ) );
+    CHECK_FALSE( actor->pending_home_death );
+    CHECK( actor->is_dead() );
+    CHECK( actor->get_last_updated() == pending.applied_until );
+    CHECK( actor->get_killer() == nullptr );
+    g->cleanup_dead();
+    actor.reset();
+    const auto check_resolved = [&]() {
+        int corpses = 0;
+        int tokens = 0;
+        for( const item &value : get_map().i_at( get_map().get_bub( target ) ) ) {
+            if( value.is_corpse() && value.get_corpse_name() == name ) {
+                ++corpses;
+                value.visit_items( [&]( const item *part, const item * ) {
+                    tokens += part->get_var( "deferred_home_death" ) == "fungal_chest";
+                    return VisitResponse::NEXT;
+                } );
+            }
+        }
+        CHECK( corpses == 1 );
+        CHECK( tokens == 1 );
+        CHECK( event_count( event_type::character_dies ) == 1 );
+        CHECK( event_count( event_type::dies_from_drug_overdose ) == 0 );
+        REQUIRE( journey.site().find_member( id ) );
+        CHECK( journey.site().find_member( id )->state == member_state::dead );
+        CHECK( journey.site().living_total == living_before - 1 );
+        CHECK( journey.site().active_outing.member_ids == peers );
+    };
+    check_resolved();
+    g->load_npcs( &get_map() );
+    check_resolved();
+    save_reload();
+    check_resolved();
+    CHECK_FALSE( overmap_buffer.find_npc( id ) );
+}
+
+static void r067_dispatch_home_death_reload( r067_home_death_setup setup, bool prevent )
+{
+    using namespace bandit_live_world;
+    const bool body_lethal = setup != r067_home_death_setup::effect;
+    const bool single_step = setup == r067_home_death_setup::body_turn;
+    const bool queued_at_death = setup == r067_home_death_setup::body_batch;
+    CAPTURE( body_lethal, single_step, prevent );
+    override_option no_food( "NO_NPC_FOOD", "true" );
+    detailed_map_entry_counts counts;
+    r067_fresh_scout_journey journey;
+    const int admission_case = static_cast<int>( setup ) + ( prevent ? 1 : 0 );
+    journey.start( false, false, false, false, false, admission_case, false, &counts );
+    const auto id = journey.site().members.back().npc_id;
+    const auto peers = journey.members();
+    const int generation = journey.scout_generation();
+    auto actor = overmap_buffer.find_npc( id );
+    REQUIRE( actor );
+    REQUIRE( actor->pending_home_death );
+    const auto pending = *actor->pending_home_death;
+    const auto target = pending.position;
+    const auto name = actor->get_name();
+    const auto source = pending.source.get_character_id();
+    const int living_before = journey.site().living_total;
+    const time_duration pending_effect_duration = single_step ? 8_minutes - single_step_applied :
+            body_lethal ? 3_minutes : 6_minutes;
+    const time_duration resumed_effect_duration = single_step ? 8_minutes - single_step_body_probe_interval :
+            body_lethal ? 2_minutes : 6_minutes - fatal_home_probe_interval;
+    const auto world_name = world_generator->active_world->world_name;
+    const efftype_id later( "test_vitamineff" );
+    const efftype_id queued_gain( "lack_sleep" );
+    const efftype_id queued_loss( "sleep_deprived" );
+    const auto save_reload = [&]() {
+        g->save_is_dirty = false;
+        REQUIRE( g->save() );
+        r067_handover_reload( world_name );
+    };
+    const auto count_event = [&]( event_type type ) {
+        int total = 0;
+        for( const auto &entry : get_stats().get_events( type ).counts() ) {
+            const auto found = entry.first.find( "character" );
+            if( found != entry.first.end() && found->second.template get<character_id>() == id ) {
+                total += entry.second.count;
+            }
+        }
+        return total;
+    };
+    const auto corpse_counts = [&]() {
+        int corpses = 0;
+        int tokens = 0;
+        for( const item &value : get_map().i_at( get_map().get_bub( target ) ) ) {
+            if( value.is_corpse() && value.get_corpse_name() == name ) {
+                ++corpses;
+                value.visit_items( [&]( const item *part, const item * ) {
+                    tokens += part->get_var( "deferred_home_death" ) == "dispatch";
+                    return VisitResponse::NEXT;
+                } );
+            }
+        }
+        return std::make_pair( corpses, tokens );
+    };
+    const auto carried_tokens = []( const npc &who ) {
+        int count = 0;
+        who.visit_items( [&]( const item *value, const item * ) {
+            count += value->get_var( "deferred_home_death" ) == "dispatch";
+            return VisitResponse::NEXT;
+        } );
+        return count;
+    };
+    const auto raw_focus = []( const npc &who ) {
+        std::ostringstream saved;
+        { JsonOut out( saved ); who.serialize( out ); }
+        const auto record = json_loader::from_string( saved.str() ).get_object();
+        record.allow_omitted_members();
+        return record.get_int( "focus_pool" );
+    };
+
+    CHECK( count_event( event_type::character_dies ) == 0 );
+    CHECK( count_event( event_type::dies_from_drug_overdose ) == 0 );
+    const int pending_focus = raw_focus( *actor );
+    if( body_lethal ) {
+        CHECK( pending_focus > 1000 ); // The completed bulk step applied its focus.
+    } else {
+        CHECK( pending_focus == 1000 );
+    }
+    REQUIRE_FALSE( get_map().inbounds( target ) );
+    actor.reset();
+    save_reload();
+    actor = overmap_buffer.find_npc( id );
+    REQUIRE( actor );
+    REQUIRE( actor->pending_home_death );
+    CHECK( actor->pending_home_death->from_body_interval );
+    CHECK( actor->pending_home_death->source.get_character_id() == source );
+    CHECK( actor->pending_home_death->resume_at == pending.resume_at );
+    CHECK( actor->pending_home_death->cause == pending.cause );
+    CHECK( actor->is_dead() == body_lethal );
+    CHECK( actor->pending_home_death->applied_until == pending.applied_until );
+    CHECK( actor->pending_home_death->work_end == pending.work_end );
+    if( queued_at_death ) {
+        REQUIRE( actor->pending_home_death->queued_additions.size() == 1 );
+        REQUIRE( actor->pending_home_death->queued_removals.size() == 1 );
+        CHECK( actor->pending_home_death->queued_additions.front().eff_id == queued_gain );
+        CHECK( actor->pending_home_death->queued_additions.front().dur == 10_minutes );
+        CHECK( actor->pending_home_death->queued_removals.front().eff_id == queued_loss );
+        CHECK_FALSE( actor->has_effect( queued_gain ) );
+        CHECK( actor->get_effect_dur( queued_loss ) == 3_minutes );
+    }
+    CHECK( actor->get_last_updated() == pending.applied_until );
+    CHECK( actor->pos_abs() == target );
+    CHECK( actor->get_effect_dur( later ) == pending_effect_duration );
+    CHECK( carried_tokens( *actor ) == 1 );
+    CHECK( count_event( event_type::character_dies ) == 0 );
+    CHECK( journey.site().active_outing.member_ids == peers );
+    CHECK( journey.site().active_outing.generation == generation );
+    CHECK( raw_focus( *actor ) == pending_focus );
+    CHECK( count_event( event_type::dies_from_drug_overdose ) == 0 );
+    REQUIRE( journey.site().find_member( id ) );
+    CHECK( journey.site().find_member( id )->wounded_or_unready );
+    CHECK( journey.site().living_total == living_before );
+    const int equilibrium = actor->calc_focus_change() + actor->get_focus();
+    int expected_focus = raw_focus( *actor );
+    for( int minute = 0; minute < ( body_lethal ? 1 : 5 ); ++minute ) {
+        expected_focus += 10 * ( equilibrium - expected_focus / 1000 );
+    }
+    if( !prevent ) {
+        std::map<character_id, tripoint_abs_ms> peer_origins;
+        for( const auto peer : peers ) {
+            const auto body = overmap_buffer.find_npc( peer );
+            REQUIRE( body );
+            peer_origins.emplace( peer, body->pos_abs() );
+        }
+        const auto both_moved = [&]() {
+            return std::all_of( peer_origins.begin(), peer_origins.end(), []( const auto &entry ) {
+                const auto body = overmap_buffer.find_npc( entry.first );
+                return body && body->pos_abs() != entry.second;
+            } );
+        };
+        for( int minute = 0; minute < 20 && !both_moved(); ++minute ) {
+            journey.next_minute();
+        }
+        CHECK( both_moved() );
+        REQUIRE( actor->pending_home_death );
+        CHECK( actor->get_last_updated() == pending.applied_until );
+        CHECK( actor->get_effect_dur( later ) == pending_effect_duration );
+        CHECK( count_event( event_type::character_dies ) == 0 );
+        CHECK( count_event( event_type::dies_from_drug_overdose ) == 0 );
+    }
+
+    struct death_resolution_observer : event_subscriber {
+        character_id id;
+        std::vector<event_type> seen;
+        std::vector<efftype_id> overdose_effects;
+        void notify( const cata::event &event ) override {
+            if( ( event.type() == event_type::dies_from_drug_overdose ||
+                  event.type() == event_type::character_dies ) &&
+                event.get<character_id>( "character" ) == id ) {
+                seen.push_back( event.type() );
+                if( event.type() == event_type::dies_from_drug_overdose ) {
+                    overdose_effects.push_back( event.get<efftype_id>( "effect" ) );
+                }
+            }
+        }
+    };
+    death_resolution_observer resolution;
+    resolution.id = id;
+    get_event_bus().subscribe( &resolution );
+    journey.move_player( journey.home );
+    REQUIRE( get_map().inbounds( target ) );
+    CHECK_FALSE( actor->pending_home_death );
+    CHECK( actor->is_dead() == !prevent );
+    std::vector<event_type> expected_events;
+    if( !prevent ) {
+        if( body_lethal ) {
+            expected_events.push_back( event_type::dies_from_drug_overdose );
+        }
+        expected_events.push_back( event_type::character_dies );
+    }
+    CHECK( resolution.seen == expected_events );
+    if( body_lethal && !prevent ) {
+        REQUIRE( resolution.overdose_effects.size() == 1 );
+        CHECK( resolution.overdose_effects.front() == ( single_step ? efftype_id( "adrenaline" ) :
+                efftype_id() ) );
+    }
+    if( prevent ) {
+        CHECK( actor->is_active() );
+        CHECK( actor->get_last_updated() == pending.work_end );
+        CHECK( actor->get_effect_dur( later ) == resumed_effect_duration );
+        CHECK( actor->calc_focus_change() + actor->get_focus() == equilibrium );
+        CHECK( raw_focus( *actor ) == expected_focus );
+        CHECK( carried_tokens( *actor ) == 1 );
+        if( body_lethal ) {
+            CHECK( actor->get_part_hp_cur( bodypart_id( "torso" ) ) == 1 );
+            if( single_step ) {
+                CHECK( actor->get_effect_dur( efftype_id( "adrenaline" ) ) ==
+                       56_minutes - single_step_body_probe_interval );
+            } else {
+                CHECK( actor->get_stim() == 250 );
+                CHECK( actor->get_effect_dur( queued_gain ) == 9_minutes );
+                CHECK_FALSE( actor->has_effect( queued_loss ) );
+            }
+        }
+    } else {
+        CHECK( actor->get_killer() == ( body_lethal ? nullptr : &get_avatar() ) );
+        CHECK( actor->get_last_updated() == pending.applied_until );
+        CHECK( actor->get_effect_dur( later ) == pending_effect_duration -
+               ( body_lethal ? 0_turns : 1_turns ) );
+        if( queued_at_death ) {
+            CHECK_FALSE( actor->has_effect( queued_gain ) );
+            CHECK( actor->get_effect_dur( queued_loss ) == 3_minutes );
+        }
+        g->cleanup_dead();
+    }
+    const auto expected_corpse = prevent ? std::make_pair( 0, 0 ) : std::make_pair( 1, 1 );
+    CHECK( corpse_counts() == expected_corpse );
+    CHECK( count_event( event_type::character_dies ) == ( prevent ? 0 : 1 ) );
+    CHECK( count_event( event_type::dies_from_drug_overdose ) == ( body_lethal && !prevent ? 1 : 0 ) );
+    g->load_npcs( &get_map() );
+    CHECK( corpse_counts() == expected_corpse );
+    actor.reset();
+    save_reload();
+    CHECK( corpse_counts() == expected_corpse );
+    CHECK( count_event( event_type::character_dies ) == ( prevent ? 0 : 1 ) );
+    CHECK( count_event( event_type::dies_from_drug_overdose ) == ( body_lethal && !prevent ? 1 : 0 ) );
+    const auto *member = journey.site().find_member( id );
+    REQUIRE( member );
+    if( prevent ) {
+        actor = overmap_buffer.find_npc( id );
+        REQUIRE( actor );
+        CHECK_FALSE( actor->pending_home_death );
+        CHECK( actor->get_last_updated() == pending.work_end );
+        CHECK( actor->get_effect_dur( later ) == resumed_effect_duration );
+        CHECK( raw_focus( *actor ) == expected_focus );
+        CHECK( carried_tokens( *actor ) == 1 );
+        CHECK( member->state == member_state::at_home );
+        if( queued_at_death ) {
+            CHECK( actor->get_effect_dur( queued_gain ) == 9_minutes );
+            CHECK_FALSE( actor->has_effect( queued_loss ) );
+        }
+    } else {
+        CHECK_FALSE( overmap_buffer.find_npc( id ) );
+        CHECK( member->state == member_state::dead );
+    }
+    CHECK( journey.site().living_total == living_before - ( prevent ? 0 : 1 ) );
+    CHECK( journey.site().active_outing.member_ids == peers );
+    CHECK( journey.site().active_outing.generation == generation );
+}
+
+TEST_CASE( "dispatch fatal effect resumes its partial interval after a native world reload",
+           "[bandit][live_world][home_pending_death][dispatch_reload]" )
+{
+    r067_dispatch_home_death_reload( r067_home_death_setup::effect, GENERATE( false, true ) );
+}
+
+TEST_CASE( "dispatch body lethal preserves cause and continues its partial interval on native entry",
+           "[bandit][live_world][home_pending_death][body_lethal_reload]" )
+{
+    r067_dispatch_home_death_reload( r067_home_death_setup::body_batch, GENERATE( false, true ) );
+}
+
+TEST_CASE( "adrenaline death preserves the cause payload and resumes from a single body turn",
+           "[bandit][live_world][home_pending_death][single_body_turn_reload]" )
+{
+    r067_dispatch_home_death_reload( r067_home_death_setup::body_turn, GENERATE( false, true ) );
+}
+
+TEST_CASE( "home admission map entry diagnostics count the actual caller",
+           "[bandit][live_world][home_admission_entry_counter]" )
+{
+    detailed_map_entry_counts counts;
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, false, false, false, 0, false, &counts );
+    CHECK( counts.regions_entered > 0 );
+    CHECK( counts.region_loads > 0 );
+    CHECK( counts.region_saves > 0 );
+    CHECK( counts.loads >= counts.region_loads );
+    CHECK( counts.saves >= counts.region_saves );
 }
 
 TEST_CASE( "legacy impossible scout departure cancels only an authenticated unstarted home party",

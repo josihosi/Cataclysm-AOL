@@ -4,16 +4,22 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <climits>
 #include <cmath>
 #include <cstdlib>
+#include <cstdint>
+#include <ctime>
+#include <fstream>
 #include <optional>
 #include <ostream>
 #include <queue>
+#include <sstream>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "active_item_cache.h"
 #include "ammo.h"
@@ -117,6 +123,87 @@
 #include "cata_tiles.h" // all animation functions will be pushed out to a cata_tiles function in some manner
 #include "sdltiles.h"
 #endif
+
+// Scoped diagnostic channel shared by the home-admission caller and mapbuffer.
+// Records are buffered until the outer scope closes, outside the measured load.
+bool caol_map_detail_active();
+std::uint64_t caol_map_detail_begin( const char *, const std::string & );
+void caol_map_detail_end( std::uint64_t, const std::string & );
+
+namespace
+{
+struct caol_map_detail_frame {
+    std::uint64_t id;
+    std::uint64_t parent;
+    std::string phase;
+    std::string detail;
+    std::chrono::steady_clock::time_point wall;
+    std::optional<std::uint64_t> cpu;
+};
+thread_local std::vector<caol_map_detail_frame> caol_map_detail_stack;
+thread_local std::vector<std::string> caol_map_detail_rows;
+thread_local std::uint64_t caol_map_detail_sequence = 0;
+std::optional<std::uint64_t> caol_map_detail_cpu()
+{
+#if !defined(_WIN32) && defined(CLOCK_THREAD_CPUTIME_ID)
+    timespec value {};
+    if( clock_gettime( CLOCK_THREAD_CPUTIME_ID, &value ) == 0 && value.tv_sec >= 0 && value.tv_nsec >= 0 ) {
+        return static_cast<std::uint64_t>( value.tv_sec ) * 1000000000ULL +
+               static_cast<std::uint64_t>( value.tv_nsec );
+    }
+#endif
+    return std::nullopt;
+}
+} // namespace
+
+bool caol_map_detail_active()
+{
+    return !caol_map_detail_stack.empty();
+}
+
+std::uint64_t caol_map_detail_begin( const char *phase, const std::string &detail )
+{
+    const char *path = std::getenv( "CAOL_HOME_DETAIL_TRACE" );
+    if( !path || !*path ) {
+        return 0;
+    }
+    const auto id = ++caol_map_detail_sequence;
+    const auto parent = caol_map_detail_stack.empty() ? 0 : caol_map_detail_stack.back().id;
+    caol_map_detail_stack.push_back( { id, parent, phase, detail,
+                                      std::chrono::steady_clock::now(), caol_map_detail_cpu() } );
+    return id;
+}
+
+void caol_map_detail_end( const std::uint64_t id, const std::string &detail )
+{
+    if( id == 0 || caol_map_detail_stack.empty() || caol_map_detail_stack.back().id != id ) {
+        return;
+    }
+    const auto wall = std::chrono::steady_clock::now();
+    const auto cpu = caol_map_detail_cpu();
+    const auto frame = std::move( caol_map_detail_stack.back() );
+    caol_map_detail_stack.pop_back();
+    std::ostringstream row;
+    row << "turn=" << to_turn<int>( calendar::turn ) << " id=" << frame.id << " parent=" << frame.parent
+        << " phase=" << frame.phase << ' ' << frame.detail << ' ' << detail << " wall_us=" <<
+        std::chrono::duration_cast<std::chrono::microseconds>( wall - frame.wall ).count() << " thread_cpu_us=";
+    if( frame.cpu && cpu && *cpu >= *frame.cpu ) {
+        row << ( *cpu - *frame.cpu ) / 1000;
+    } else {
+        row << "unavailable";
+    }
+    caol_map_detail_rows.push_back( row.str() );
+    if( caol_map_detail_stack.empty() ) {
+        const char *path = std::getenv( "CAOL_HOME_DETAIL_TRACE" );
+        if( path && *path ) {
+            std::ofstream output( path, std::ios::app );
+            for( const auto &entry : caol_map_detail_rows ) {
+                output << entry << '\n';
+            }
+        }
+        caol_map_detail_rows.clear();
+    }
+}
 
 static const ammo_effect_str_id ammo_effect_IGNITE( "IGNITE" );
 static const ammo_effect_str_id ammo_effect_INCENDIARY( "INCENDIARY" );
@@ -8742,8 +8829,50 @@ std::vector<tripoint_bub_ms> map::get_dir_circle( const tripoint_bub_ms &f,
     return circle;
 }
 
+namespace
+{
+thread_local detailed_map_entry_counts *active_map_entry_counts = nullptr;
+thread_local unsigned active_map_entry_depth = 0;
+}
+
+scoped_detailed_map_entry_counter::scoped_detailed_map_entry_counter(
+    detailed_map_entry_counts &counts ) : previous( active_map_entry_counts ),
+    previous_depth( active_map_entry_depth )
+{
+    active_map_entry_counts = &counts;
+    active_map_entry_depth = 0;
+}
+
+scoped_detailed_map_entry_counter::~scoped_detailed_map_entry_counter()
+{
+    active_map_entry_counts = previous;
+    active_map_entry_depth = previous_depth;
+}
+
+scoped_detailed_map_entry_region::scoped_detailed_map_entry_region() :
+    enabled( active_map_entry_counts != nullptr )
+{
+    if( enabled ) {
+        ++active_map_entry_depth;
+        ++active_map_entry_counts->regions_entered;
+    }
+}
+
+scoped_detailed_map_entry_region::~scoped_detailed_map_entry_region()
+{
+    if( enabled ) {
+        --active_map_entry_depth;
+    }
+}
+
 void map::save()
 {
+    if( active_map_entry_counts ) {
+        ++active_map_entry_counts->saves;
+        if( active_map_entry_depth ) {
+            ++active_map_entry_counts->region_saves;
+        }
+    }
     for( int gridx = 0; gridx < my_MAPSIZE; gridx++ ) {
         for( int gridy = 0; gridy < my_MAPSIZE; gridy++ ) {
             if( zlevels ) {
@@ -8760,6 +8889,12 @@ void map::save()
 void map::load( const tripoint_abs_sm &w, const bool update_vehicle,
                 const bool pump_events )
 {
+    if( active_map_entry_counts ) {
+        ++active_map_entry_counts->loads;
+        if( active_map_entry_depth ) {
+            ++active_map_entry_counts->region_loads;
+        }
+    }
     map &main_map = get_map();
     // It used to be unsafe to load a map that overlaps with the primary map;
     // Show an info line in tests to help track new errors
@@ -8783,6 +8918,8 @@ void map::load( const tripoint_abs_sm &w, const bool update_vehicle,
         clear_vehicle_list( z );
     }
     dirty_vehicle_list.clear();
+    const auto detail_loadn = caol_map_detail_active() ? caol_map_detail_begin( "loadn_loop",
+                              "submap=" + w.to_string() ) : 0;
     for( int gridx = 0; gridx < my_MAPSIZE; gridx++ ) {
         for( int gridy = 0; gridy < my_MAPSIZE; gridy++ ) {
             loadn( { gridx, gridy }, update_vehicle );
@@ -8791,8 +8928,13 @@ void map::load( const tripoint_abs_sm &w, const bool update_vehicle,
             }
         }
     }
+    caol_map_detail_end( detail_loadn, "" );
+    const auto detail_vehicle = caol_map_detail_active() ? caol_map_detail_begin( "vehicle_cache_rebuild", "" ) : 0;
     rebuild_vehicle_level_caches();
+    caol_map_detail_end( detail_vehicle, "" );
 
+    const auto detail_actualize = caol_map_detail_active() ? caol_map_detail_begin( "actualization_loop",
+                                  "submap=" + w.to_string() + " zlevels=" + std::to_string( zlevels ) ) : 0;
     if( !explosion_handler::explosion_processing_active() ) {
         // actualize after loading all submaps to prevent errors
         // with entities at the edges
@@ -8809,8 +8951,11 @@ void map::load( const tripoint_abs_sm &w, const bool update_vehicle,
             }
         }
     }
+    caol_map_detail_end( detail_actualize, "" );
 
+    const auto detail_wake = caol_map_detail_active() ? caol_map_detail_begin( "wakeup_reconcile", "" ) : 0;
     reconcile_item_wakeups();
+    caol_map_detail_end( detail_wake, "" );
 }
 
 void map::reconcile_item_wakeups()
@@ -9180,6 +9325,8 @@ void map::loadn( const point_bub_sm &grid, bool update_vehicles )
     // Get the base submap "grid" is an offset from.
     const tripoint_abs_sm grid_sm_base = project_to<coords::sm>( grid_abs_omt );
     bool map_incomplete = false;
+    std::string detail_first_missing;
+    int detail_checks = 0;
 
     map &bubble_map = reality_bubble();
 
@@ -9188,25 +9335,41 @@ void map::loadn( const point_bub_sm &grid, bool update_vehicles )
 
     // It might be possible to just check the (0, 0) submap as we should never have
     // a case where only one submap is missing from an OMT level.
+    const auto detail_scan = caol_map_detail_active() ? caol_map_detail_begin( "submap_exists_scan",
+                             "omt=" + grid_abs_omt.to_string() ) : 0;
     for( int gridx = 0; !map_incomplete && gridx <= 1; gridx++ ) {
         for( int gridy = 0; !map_incomplete && gridy <= 1; gridy++ ) {
             for( int gridz = -OVERMAP_DEPTH; gridz <= OVERMAP_HEIGHT; gridz++ ) {
                 const tripoint grid_pos( gridx, gridy, gridz );
                 const tripoint_abs_sm check_pos = grid_sm_base.xy() + grid_pos;
                 const bool submap_exists = MAPBUFFER.submap_exists( check_pos );
+                if( detail_scan ) {
+                    ++detail_checks;
+                }
                 if( !submap_exists ) {
+                    if( detail_scan ) {
+                        detail_first_missing = check_pos.to_string();
+                    }
                     map_incomplete = true;
                     break;
                 }
             }
         }
     }
+    if( detail_scan ) {
+        caol_map_detail_end( detail_scan, "checks=" + std::to_string( detail_checks ) +
+                             " incomplete=" + std::to_string( map_incomplete ) + " first_missing=" +
+                             ( detail_first_missing.empty() ? "none" : detail_first_missing ) );
+    }
 
     if( map_incomplete ) {
         smallmap tmp_map;
         swap_map swap( *tmp_map.cast_to_map() );
         tmp_map.main_cleanup_override( false );
+        const auto detail_generate = caol_map_detail_active() ? caol_map_detail_begin( "map_generate",
+                                     "omt=" + grid_abs_omt.to_string() ) : 0;
         tmp_map.generate( grid_abs_omt, calendar::turn, true );
+        caol_map_detail_end( detail_generate, "returned=1" );
         _main_requires_cleanup |= main_inbounds && tmp_map.is_main_cleanup_queued();
 
         for( int gridz = -OVERMAP_DEPTH; gridz <= OVERMAP_HEIGHT; gridz++ ) {
@@ -10938,6 +11101,12 @@ const submap *map::unsafe_get_submap_at( const tripoint_bub_ms &p ) const
 {
     cata_assert( inbounds( p ) );
     return get_submap_at_grid( { p.x() / SEEX, p.y() / SEEY, p.z() } );
+}
+
+bool map::is_tile_loaded( const tripoint_bub_ms &p ) const
+{
+    return inbounds( p ) && ( zlevels || p.z() == abs_sub.z() ) &&
+           unsafe_get_submap_at( p ) != nullptr;
 }
 
 void map::cache_submap_fields( const tripoint_rel_sm &gridp )

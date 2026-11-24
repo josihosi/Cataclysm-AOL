@@ -59,6 +59,7 @@
 #include "map.h"
 #include "map_helpers.h"
 #include "map_helpers_tests.h"
+#include "mapbuffer.h"
 #include "mapdata.h"
 #include "map_iterator.h"
 #include "map_scale_constants.h"
@@ -67,10 +68,13 @@
 #include "messages.h"
 #include "iexamine.h"
 #include "monster.h"
+#include "mtype.h"
 #include "mission_companion.h"
 #include "npc.h"
 #include "npc_class.h"
+#include "npc_home_body.h"
 #include "npctalk.h"
+#include "omdata.h"
 #include "options_helpers.h"
 #include "output.h"
 #include "sounds.h"
@@ -500,6 +504,833 @@ TEST_CASE( "NPC reload accounts six pending body seconds once without recounting
     CHECK( reloaded.pos_abs() == position );
     CHECK( reloaded.catch_up_body() == 0_turns );
     CHECK( history_bytes( reloaded ) == after );
+}
+
+TEST_CASE( "detailed map entry counter isolates a caller region",
+           "[npc][detailed_map_entry_counter]" )
+{
+    const tripoint_abs_omt location = get_player_character().pos_abs_omt() + point( 2, 0 );
+    tinymap outside;
+    tinymap inside;
+    detailed_map_entry_counts counts;
+    scoped_detailed_map_entry_counter counter( counts );
+    // A legitimate owner in the same measured thread is not the selected caller.
+    outside.load( location, false );
+    outside.save();
+    CHECK( counts.loads == 1 );
+    CHECK( counts.saves == 1 );
+    CHECK( counts.region_loads == 0 );
+    CHECK( counts.region_saves == 0 );
+    REQUIRE( MAPBUFFER.lookup_submap_cached( project_to<coords::sm>( location ) ) != nullptr );
+    {
+        scoped_detailed_map_entry_region region;
+        // The second load hits already-loaded world data but remains a map entry.
+        inside.load( location, false );
+        inside.save();
+    }
+    CHECK( counts.regions_entered == 1 );
+    CHECK( counts.loads == 2 );
+    CHECK( counts.saves == 2 );
+    CHECK( counts.region_loads == 1 );
+    CHECK( counts.region_saves == 1 );
+}
+
+TEST_CASE( "offscreen home comfort is an explicit overmap estimate",
+           "[npc][home_body_environment]" )
+{
+    using bandit_live_world::hostile_site_profile;
+    const oter_str_id bandit( "bandit_camp_1_north" );
+    const oter_str_id cannibal( "cannibal_camp_1_north" );
+    const oter_str_id cabin( "bandit_cabin_north" );
+    const oter_str_id field( "field" );
+    REQUIRE( bandit.is_valid() );
+    REQUIRE( cannibal.is_valid() );
+    REQUIRE( cabin.is_valid() );
+    REQUIRE( field.is_valid() );
+    const oter_id bandit_terrain = bandit.id();
+    const oter_id cannibal_terrain = cannibal.id();
+    const oter_id cabin_terrain = cabin.id();
+    const oter_id field_terrain = field.id();
+    submap_load_counts counts;
+    scoped_submap_load_counter load_counter( counts );
+    for( const auto &estimate : {
+    estimate_npc_home_body_environment( hostile_site_profile::camp_style, bandit_terrain ),
+    estimate_npc_home_body_environment( hostile_site_profile::camp_style, cabin_terrain ),
+    estimate_npc_home_body_environment( hostile_site_profile::cannibal_camp, cannibal_terrain ) } ) {
+        REQUIRE( estimate );
+        CHECK( estimate->sleep_comfort == 5 );
+        CHECK( estimate->sleeping_rest_quality == Approx( 0.5f ) );
+        CHECK( estimate->sheltered );
+        CHECK( estimate->seating );
+        CHECK( estimate->terrain_known );
+    }
+    const auto field_home = estimate_npc_home_body_environment( hostile_site_profile::camp_style,
+                            field_terrain );
+    REQUIRE( field_home );
+    CHECK( field_home->terrain_known );
+    CHECK_FALSE( field_home->sheltered );
+    CHECK( field_home->sleep_comfort == 5 );
+    CHECK( field_home->seating );
+    CHECK( estimate_npc_home_body_environment( hostile_site_profile::camp_style,
+           cannibal_terrain ) );
+    CHECK( estimate_npc_home_body_environment( hostile_site_profile::small_hostile_site,
+           field_terrain ) );
+    CHECK_FALSE( estimate_npc_home_body_environment( hostile_site_profile::none,
+                 bandit_terrain ) );
+    CHECK( counts.lookup_calls == 0 );
+    CHECK( counts.unserialize_calls == 0 );
+    CHECK( counts.deserialize_calls == 0 );
+}
+
+TEST_CASE( "pending home death round trips its selected boundary",
+           "[npc][home_pending_death]" )
+{
+    npc body = create_model();
+    const character_id id = body.getID();
+    npc_home_pending_death pending;
+    pending.position = body.pos_abs();
+    pending.applied_until = calendar::turn_zero + 123_turns;
+    pending.work_end = calendar::turn_zero + 456_turns;
+    pending.cause = "effect_kill";
+    pending.effect_phase = "selected_after_decay";
+    pending.effect = efftype_id( "stunned" );
+    pending.effect_bodypart = bodypart_str_id( "torso" ).id();
+    pending.next_effect_index = 3;
+    pending.pending_removals.push_back( efftype_id( "stunned" ) );
+    pending.pending_removal_parts.push_back( bodypart_str_id( "torso" ).id() );
+    pending.source = effect_source( &get_player_character() );
+    body.pending_home_death = pending;
+    std::ostringstream saved;
+    { JsonOut out( saved ); body.serialize( out ); }
+    npc reloaded;
+    JsonValue value = json_loader::from_string( saved.str() );
+    reloaded.deserialize( value.get_object() );
+    REQUIRE( reloaded.pending_home_death );
+    const auto &actual = *reloaded.pending_home_death;
+    CHECK( reloaded.getID() == id );
+    CHECK( actual.position == pending.position );
+    CHECK( actual.applied_until == pending.applied_until );
+    CHECK( actual.work_end == pending.work_end );
+    CHECK( actual.cause == pending.cause );
+    CHECK( actual.effect_phase == pending.effect_phase );
+    CHECK( actual.effect == pending.effect );
+    CHECK( actual.effect_bodypart == pending.effect_bodypart );
+    CHECK( actual.next_effect_index == pending.next_effect_index );
+    CHECK( actual.pending_removals == pending.pending_removals );
+    CHECK( actual.pending_removal_parts == pending.pending_removal_parts );
+    CHECK( actual.source.get_character_id() == pending.source.get_character_id() );
+    CHECK_FALSE( reloaded.marked_for_death );
+}
+
+TEST_CASE( "native needs preserve simultaneous causes in their selection order",
+           "[npc][home_pending_death][physiological_causes]" )
+{
+    using cause = npc_physiological_death_cause;
+    override_option food( "NO_NPC_FOOD", "false" );
+    npc body = create_model();
+    body.stomach.empty();
+    body.guts.empty();
+    body.set_stored_kcal( 0 );
+    body.set_thirst( 1200 );
+    body.set_painkiller( 241 );
+    REQUIRE_FALSE( body.is_dead() );
+    std::vector<cause> selected;
+    npc_home_body_context home{};
+    home.physiological_deaths = &selected;
+    body.check_needs_extremes( &home );
+    CHECK( body.is_dead() );
+    REQUIRE( selected == std::vector<cause>{ cause::respiratory_overdose, cause::starvation,
+                                           cause::dehydration } );
+
+    npc_home_pending_death pending;
+    pending.cause = npc_physiological_death_id( selected.front() );
+    for( auto it = std::next( selected.begin() ); it != selected.end(); ++it ) {
+        pending.additional_physiological_causes.emplace_back( npc_physiological_death_id( *it ) );
+    }
+    std::ostringstream saved;
+    { JsonOut out( saved ); pending.serialize( out ); }
+    npc_home_pending_death restored;
+    restored.deserialize( json_loader::from_string( saved.str() ).get_object() );
+    CHECK( restored.cause == pending.cause );
+    CHECK( restored.additional_physiological_causes == pending.additional_physiological_causes );
+    CHECK( restored.has_physiological_causes() );
+    std::reverse( restored.additional_physiological_causes.begin(),
+                  restored.additional_physiological_causes.end() );
+    CHECK_FALSE( restored.has_physiological_causes() );
+}
+
+TEST_CASE( "pending home death resolves at the original local tile once",
+           "[npc][home_pending_death][local_resolution]" )
+{
+    const bool prevent = GENERATE( false, true );
+    CAPTURE( prevent );
+    clear_avatar();
+    clear_npcs();
+    map &here = get_map();
+    const tripoint_bub_ms target = get_avatar().pos_bub() + point( 3, 0 );
+    here.ter_set( target, ter_id( "t_floor" ) );
+    auto actor = make_shared_fast<npc>();
+    actor->normalize();
+    actor->load_npc_template( npc_template_id( "test_talker" ) );
+    actor->setID( g->assign_npc_id(), true );
+    actor->spawn_at_precise( here.get_abs( target ) );
+    const auto id = actor->getID();
+    const auto name = actor->get_name();
+    on_out_of_scope cleanup( [&]() {
+        g->remove_npc( id );
+        overmap_buffer.remove_npc( id );
+        here.i_clear( target );
+    } );
+    if( prevent ) {
+        actor->death_eocs.push_back( effect_on_condition_id( "EOC_event_NPC_DEATH_test" ) );
+    }
+    item owned( itype_id( "rock" ), calendar::turn );
+    owned.set_var( "home_pending_test", "owned" );
+    actor->i_add( owned );
+    npc_home_pending_death pending;
+    pending.position = actor->pos_abs();
+    pending.applied_until = actor->get_last_updated();
+    pending.work_end = pending.applied_until;
+    pending.cause = "body_lethal";
+    pending.effect_phase = "body_completed";
+    actor->pending_home_death = pending;
+    actor->set_part_hp_cur( bodypart_id( "torso" ), 0 );
+    REQUIRE( actor->is_dead() );
+    overmap_buffer.insert_npc( actor );
+    const auto corpse_counts = [&]() {
+        int corpses = 0;
+        int owned_items = 0;
+        for( const item &value : here.i_at( target ) ) {
+            if( value.is_corpse() && value.get_corpse_name() == name ) {
+                ++corpses;
+                value.visit_items( [&]( const item *part, const item * ) {
+                    owned_items += part->get_var( "home_pending_test" ) == "owned";
+                    return VisitResponse::NEXT;
+                } );
+            }
+        }
+        return std::make_pair( corpses, owned_items );
+    };
+    g->load_npcs( &here );
+    CHECK_FALSE( actor->pending_home_death );
+    CHECK( actor->pos_abs() == pending.position );
+    CHECK( actor->is_dead() != prevent );
+    CHECK( corpse_counts() == ( prevent ? std::make_pair( 0, 0 ) : std::make_pair( 1, 1 ) ) );
+    if( prevent ) {
+        CHECK( actor->is_active() );
+    }
+    g->load_npcs( &here );
+    CHECK( corpse_counts() == ( prevent ? std::make_pair( 0, 0 ) : std::make_pair( 1, 1 ) ) );
+}
+
+TEST_CASE( "selected fatal effect resumes later effects after local death handling",
+           "[npc][home_pending_death][effect_kill]" )
+{
+    const bool prevent = GENERATE( false, true );
+    CAPTURE( prevent );
+    clear_avatar();
+    clear_npcs();
+    clear_creatures();
+    map &here = get_map();
+    const tripoint_bub_ms target = get_avatar().pos_bub() + point( 4, 4 );
+    here.ter_set( target, ter_id( "t_floor" ) );
+    auto original = make_shared_fast<npc>();
+    original->normalize();
+    original->load_npc_template( npc_template_id( "test_talker" ) );
+    original->setID( g->assign_npc_id(), true );
+    original->spawn_at_precise( here.get_abs( target ) );
+    original->clear_effects();
+    if( prevent ) {
+        original->death_eocs.push_back( effect_on_condition_id( "EOC_event_NPC_DEATH_test" ) );
+    }
+    const auto id = original->getID();
+    const auto origin = original->pos_abs();
+    on_out_of_scope cleanup( [&]() {
+        g->remove_npc( id );
+        overmap_buffer.remove_npc( id );
+        here.i_clear( target );
+    } );
+    original->add_effect( effect_source( &get_player_character() ), efftype_id( "test_fatalism" ),
+                          6_minutes, bodypart_id( "torso" ), false, 3 );
+    original->add_effect( efftype_id( "test_vitamineff" ), 6_minutes );
+    REQUIRE( original->get_effects().size() == 2 );
+    detailed_map_entry_counts counts;
+    {
+        scoped_detailed_map_entry_counter count( counts );
+        scoped_npc_home_effects capture( *original, "fatal-effect-test", true );
+        original->process_effects();
+    }
+    REQUIRE( original->pending_home_death );
+    CHECK( original->pending_home_death->effect_phase == "effect_kill" );
+    CHECK( original->pending_home_death->effect == efftype_id( "test_fatalism" ) );
+    CHECK( original->pending_home_death->source.get_character_id() == get_player_character().getID() );
+    CHECK_FALSE( original->is_dead() );
+    CHECK( counts.loads == 0 );
+    CHECK( counts.saves == 0 );
+    const time_duration later_duration = original->get_effect_dur( efftype_id( "test_vitamineff" ) );
+    CHECK( later_duration == 6_minutes );
+    std::ostringstream saved;
+    { JsonOut out( saved ); original->serialize( out ); }
+    auto reloaded = make_shared_fast<npc>();
+    JsonValue data = json_loader::from_string( saved.str() );
+    reloaded->deserialize( data.get_object() );
+    REQUIRE( reloaded->pending_home_death );
+    CHECK( reloaded->pending_home_death->source.get_character_id() == get_player_character().getID() );
+    CHECK( reloaded->pos_abs() == origin );
+    overmap_buffer.insert_npc( reloaded );
+    // A temporary non-bubble map must not consume the decision.
+    tinymap alternate;
+    alternate.load( project_to<coords::omt>( origin ), false );
+    g->load_npcs( alternate.cast_to_map() );
+    CHECK( reloaded->pending_home_death );
+    g->load_npcs( &here );
+    CHECK_FALSE( reloaded->pending_home_death );
+    CHECK( reloaded->pos_abs() == origin );
+    CHECK( reloaded->is_dead() != prevent );
+    CHECK( reloaded->get_effect_dur( efftype_id( "test_vitamineff" ) ) ==
+           later_duration - 1_turns );
+    if( prevent ) {
+        CHECK( reloaded->is_active() );
+    } else {
+        CHECK( reloaded->get_killer() == &get_player_character() );
+    }
+    g->load_npcs( &here );
+    CHECK_FALSE( reloaded->pending_home_death );
+}
+
+TEST_CASE( "selected home world events wait for the real local footprint",
+           "[npc][home_world_event]" )
+{
+    clear_avatar();
+    clear_npcs();
+    clear_creatures();
+    clear_map();
+    map &here = get_map();
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    auto saved_world = std::move( world );
+    world.clear();
+    on_out_of_scope restore_world( [&]() {
+        clear_creatures();
+        world = std::move( saved_world );
+    } );
+    const tripoint_bub_ms center = get_avatar().pos_bub() + point( 8, 8 );
+    const tripoint_bub_ms spore( 0, center.y(), center.z() );
+    REQUIRE( here.is_tile_loaded( spore ) );
+    REQUIRE_FALSE( here.is_tile_loaded( spore - point( 1, 0 ) ) );
+    here.ter_set( center, ter_id( "t_floor" ) );
+    here.ter_set( center + point( -1, 0 ), ter_id( "t_wall" ) );
+    here.ter_set( center + point( 0, -1 ), ter_id( "t_wall" ) );
+    here.ter_set( center + point( -1, -1 ), ter_id( "t_wall" ) );
+    here.ter_set( spore, ter_id( "t_floor" ) );
+    REQUIRE( here.is_cornerfloor( center ) );
+    const tripoint_bub_ms edge_corner( 0, center.y() + 20, center.z() );
+    const auto edge_origin = edge_corner + point( 6, 0 );
+    here.ter_set( edge_corner, ter_id( "t_floor" ) );
+    here.ter_set( edge_corner + point( 1, 0 ), ter_id( "t_wall" ) );
+    here.ter_set( edge_corner + point( 0, -1 ), ter_id( "t_wall" ) );
+    here.ter_set( edge_corner + point( 1, -1 ), ter_id( "t_wall" ) );
+    REQUIRE( here.is_cornerfloor( edge_corner ) );
+    REQUIRE( here.inbounds( edge_origin - point( 6, 0 ) ) );
+    REQUIRE_FALSE( here.inbounds( edge_origin - point( 7, 0 ) ) );
+    const auto serialize_and_reload = [&]() {
+        std::ostringstream saved;
+        { JsonOut json( saved ); world.serialize( json ); }
+        JsonValue value = json_loader::from_string( saved.str() );
+        world.deserialize( value.get_object() );
+    };
+    // No selected outcome means no event and no local world action.
+    g->load_npcs( &here );
+    CHECK( world.pending_home_world_events.empty() );
+    const auto kind = bandit_live_world::home_world_event_kind::fungal_spore;
+    REQUIRE( world.enqueue_home_world_event( { "spore-one", kind, here.get_abs( spore ) } ) );
+    CHECK_FALSE( world.enqueue_home_world_event( { "spore-one", kind, here.get_abs( spore ) } ) );
+    REQUIRE( world.enqueue_home_world_event( { "rift-one",
+             bandit_live_world::home_world_event_kind::tindalos_rift, here.get_abs( center ) } ) );
+    REQUIRE( world.enqueue_home_world_event( { "elsewhere", kind,
+             here.get_abs( center ) + tripoint( 1000, 1000, 0 ) } ) );
+    REQUIRE( world.enqueue_home_world_event( { "edge-rift",
+             bandit_live_world::home_world_event_kind::tindalos_rift,
+             here.get_abs( edge_origin ) } ) );
+    serialize_and_reload();
+    REQUIRE( world.pending_home_world_events.size() == 4 );
+    // A real occupied-tile refusal retains the same selected spore event.
+    REQUIRE( g->place_critter_at( mtype_id( "mon_zombie" ), spore ) );
+    g->load_npcs( &here );
+    CHECK( world.pending_home_world_events.size() == 3 );
+    CHECK( here.get_field( center, field_type_id( "fd_tindalos_rift" ) ) );
+    CHECK_FALSE( here.get_field( edge_corner, field_type_id( "fd_tindalos_rift" ) ) );
+    serialize_and_reload();
+    REQUIRE( world.pending_home_world_events.size() == 3 );
+    clear_creatures();
+    // The record has no NPC owner, so the origin actor need not remain here.
+    g->load_npcs( &here );
+    CHECK( world.pending_home_world_events.size() == 2 );
+    const monster *spawned = get_creature_tracker().creature_at<monster>( spore );
+    REQUIRE( spawned );
+    CHECK( spawned->type->id == mtype_id( "mon_spore" ) );
+    serialize_and_reload();
+    REQUIRE( world.pending_home_world_events.size() == 2 );
+    g->load_npcs( &here );
+    CHECK( world.pending_home_world_events.size() == 2 );
+    CHECK( get_creature_tracker().creature_at<monster>( spore ) == spawned );
+}
+
+TEST_CASE( "home fungal event is retained at the creature cap",
+           "[npc][home_world_event][creature_cap]" )
+{
+    clear_avatar();
+    clear_npcs();
+    clear_creatures();
+    clear_map();
+    map &here = get_map();
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    auto saved_world = std::move( world );
+    world.clear();
+    on_out_of_scope cleanup( [&]() {
+        clear_creatures();
+        world = std::move( saved_world );
+    } );
+    const tripoint_bub_ms target = get_avatar().pos_bub() + point( 20, 20 );
+    here.ter_set( target, ter_id( "t_floor" ) );
+    REQUIRE( world.enqueue_home_world_event( { "capped-spore",
+             bandit_live_world::home_world_event_kind::fungal_spore, here.get_abs( target ) } ) );
+    for( int x = -15; x <= 15 && g->num_creatures() < 250; ++x ) {
+        for( int y = -15; y <= 15 && g->num_creatures() < 250; ++y ) {
+            const tripoint_bub_ms pos = get_avatar().pos_bub() + point( x, y );
+            if( pos != target && pos != get_avatar().pos_bub() ) {
+                here.ter_set( pos, ter_id( "t_floor" ) );
+                g->place_critter_at( mtype_id( "mon_zombie" ), pos );
+            }
+        }
+    }
+    const auto serialize_and_reload = [&]() {
+        std::ostringstream saved;
+        { JsonOut json( saved ); world.serialize( json ); }
+        JsonValue value = json_loader::from_string( saved.str() );
+        world.deserialize( value.get_object() );
+    };
+    REQUIRE( g->num_creatures() >= 250 );
+    g->load_npcs( &here );
+    REQUIRE( world.pending_home_world_events.size() == 1 );
+    CHECK( world.pending_home_world_events.front().id == "capped-spore" );
+    CHECK_FALSE( get_creature_tracker().creature_at<monster>( target ) );
+    serialize_and_reload();
+    REQUIRE( world.pending_home_world_events.size() == 1 );
+    clear_creatures();
+    g->load_npcs( &here );
+    CHECK( world.pending_home_world_events.empty() );
+    const monster *spawned = get_creature_tracker().creature_at<monster>( target );
+    REQUIRE( spawned );
+    CHECK( spawned->type->id == mtype_id( "mon_spore" ) );
+    serialize_and_reload();
+    CHECK( world.pending_home_world_events.empty() );
+    g->load_npcs( &here );
+    CHECK( get_creature_tracker().creature_at<monster>( target ) == spawned );
+}
+
+TEST_CASE( "home effect context keeps bodily loss without cosmetic fields",
+           "[npc][home_effect_context]" )
+{
+    clear_avatar();
+    clear_npcs();
+    clear_creatures();
+    clear_map();
+    map &here = get_map();
+    const tripoint_bub_ms pos = get_avatar().pos_bub() + point( 5, 5 );
+    npc body = create_model();
+    body.spawn_at_precise( here.get_abs( pos ) );
+    body.stomach.ingest( { 0_ml, 250_ml, {} } );
+    REQUIRE( body.stomach.contains() > 0_ml );
+    detailed_map_entry_counts counts;
+    {
+        scoped_detailed_map_entry_counter count( counts );
+        scoped_npc_home_effects home( body, "body-test" );
+        body.vomit();
+        CHECK( body.stomach.contains() == 0_ml );
+        CHECK( body.has_effect( efftype_id( "nausea" ) ) );
+        const int before_blood = body.vitamin_get( vitamin_id( "blood" ) );
+        body.add_effect( efftype_id( "bleed" ), 1_hours, bodypart_id( "torso" ), false, 40, true );
+        CHECK( body.vitamin_get( vitamin_id( "blood" ) ) < before_blood );
+        for( const auto &tile : here.points_in_radius( pos, 2 ) ) {
+            CHECK_FALSE( here.get_field( tile, field_type_id( "fd_bile" ) ) );
+            CHECK_FALSE( here.get_field( tile, field_type_id( "fd_blood" ) ) );
+        }
+    }
+    CHECK( counts.loads == 0 );
+    CHECK( counts.saves == 0 );
+    // The regular local path still produces bile for the same physical act.
+    body.stomach.ingest( { 0_ml, 250_ml, {} } );
+    body.vomit();
+    bool bile = false;
+    for( const auto &tile : here.points_in_radius( pos, 2 ) ) {
+        bile |= here.get_field( tile, field_type_id( "fd_bile" ) ) != nullptr;
+    }
+    CHECK( bile );
+}
+
+namespace
+{
+class home_effect_test_npc : public npc
+{
+    public:
+        using Character::process_one_effect;
+};
+}
+
+TEST_CASE( "home fungal producer records only a selected spore outcome",
+           "[npc][home_fungal_producer]" )
+{
+    clear_avatar();
+    clear_npcs();
+    clear_creatures();
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    auto saved_world = std::move( world );
+    const auto saved_rng = rng_get_engine();
+    world.clear();
+    on_out_of_scope restore( [&]() {
+        world = std::move( saved_world );
+        rng_get_engine() = saved_rng;
+    } );
+    home_effect_test_npc body;
+    body.normalize();
+    body.setID( g->assign_npc_id(), true );
+    body.spawn_at_precise( get_avatar().pos_abs() + tripoint( 5, 5, 0 ) );
+    const efftype_id fungus( "fungus" );
+    REQUIRE( fungus.is_valid() );
+    effect symptoms( effect_source::empty(), &fungus.obj(), 18_hours,
+                     bodypart_str_id::NULL_ID(), false, 3, calendar::turn );
+    REQUIRE( symptoms.get_intensity() == 3 );
+    REQUIRE_FALSE( body.resists_effect( symptoms ) );
+    const int denominator = 6000 + ( body.get_lifestyle() / 10 ) * 48;
+    unsigned chosen = 0;
+    for( unsigned seed = 1; seed < 200000; ++seed ) {
+        rng_set_engine_seed( seed );
+        if( one_in( denominator ) ) {
+            bool spore = false;
+            for( int i = 0; i < 8; ++i ) {
+                spore |= one_in( 4 );
+            }
+            if( spore ) {
+                chosen = seed;
+                break;
+            }
+        }
+    }
+    REQUIRE( chosen != 0 );
+    // Seed 0 is first checked as a genuine failed trigger, not as a fabricated event.
+    rng_set_engine_seed( 0 );
+    REQUIRE_FALSE( one_in( denominator ) );
+    rng_set_engine_seed( 0 );
+    {
+        scoped_npc_home_effects capture( body, "fungus-no-trigger" );
+        body.process_one_effect( symptoms, false );
+    }
+    CHECK( world.pending_home_world_events.empty() );
+    rng_set_engine_seed( chosen );
+    detailed_map_entry_counts counts;
+    {
+        scoped_detailed_map_entry_counter count( counts );
+        scoped_npc_home_effects capture( body, "fungus-selected" );
+        body.process_one_effect( symptoms, false );
+    }
+    REQUIRE_FALSE( world.pending_home_world_events.empty() );
+    for( const auto &event : world.pending_home_world_events ) {
+        CHECK( event.kind == bandit_live_world::home_world_event_kind::fungal_spore );
+        CHECK( square_dist( event.origin.xy(), body.pos_abs().xy() ) == 1 );
+    }
+    CHECK( counts.loads == 0 );
+    CHECK( counts.saves == 0 );
+}
+
+TEST_CASE( "home fungal symptoms preserve native cough, spasm and sickness",
+           "[npc][home_fungal_producer][bodily_symptoms]" )
+{
+    enum symptom { cough, spasm, sickness };
+    const symptom selected = GENERATE( cough, spasm, sickness );
+    CAPTURE( selected );
+    override_option food( "NO_NPC_FOOD", "false" );
+    clear_avatar();
+    clear_npcs();
+    sounds::reset_sounds();
+    const auto saved_rng = rng_get_engine();
+    on_out_of_scope restore( [&]() {
+        rng_get_engine() = saved_rng;
+        sounds::reset_sounds();
+    } );
+    home_effect_test_npc body;
+    body.normalize();
+    body.setID( g->assign_npc_id(), true );
+    body.spawn_at_precise( get_avatar().pos_abs() + tripoint( 5, 5, 0 ) );
+    const efftype_id fungus( "fungus" );
+    effect symptoms( effect_source::empty(), &fungus.obj(), selected == cough ? 1_hours : 7_hours,
+                     bodypart_str_id::NULL_ID(), false, selected == cough ? 1 : 2, calendar::turn );
+    REQUIRE_FALSE( body.resists_effect( symptoms ) );
+    const int bonus = body.get_lifestyle() / 10;
+    unsigned chosen = 0;
+    for( unsigned seed = 1; seed < 200000 && chosen == 0; ++seed ) {
+        rng_set_engine_seed( seed );
+        if( selected == cough ) {
+            if( one_in( 960 + bonus * 6 ) ) {
+                chosen = seed;
+            }
+        } else if( one_in( 3600 + bonus * 18 ) ) {
+            if( selected == spasm ) {
+                chosen = seed;
+            }
+        } else if( selected == sickness &&
+                   ( x_in_y( body.vomit_mod(), 4800 + bonus * 24 ) || one_in( 12000 + bonus * 60 ) ) &&
+                   rng( 0, 70 ) >= body.get_str() ) {
+            chosen = seed;
+        }
+    }
+    REQUIRE( chosen != 0 );
+    const bodypart_id torso( "torso" );
+    const int hp = body.get_part_hp_cur( torso );
+    const int hunger = body.get_hunger();
+    const int thirst = body.get_thirst();
+    const auto original_duration = symptoms.get_duration();
+    body.set_moves( 0 );
+    detailed_map_entry_counts counts;
+    {
+        rng_set_engine_seed( chosen );
+        scoped_detailed_map_entry_counter count( counts );
+        scoped_npc_home_effects capture( body, "fungal-bodily-symptoms" );
+        body.process_one_effect( symptoms, false );
+    }
+    CHECK( symptoms.get_duration() == original_duration + 1_turns );
+    CHECK( counts.loads == 0 );
+    CHECK( counts.saves == 0 );
+    CHECK( body.get_moves() < 0 );
+    if( selected == cough ) {
+        CHECK( body.has_effect( efftype_id( "disrupted_sleep" ) ) );
+        CHECK( sounds::get_monster_sounds().first.empty() );
+        CHECK( body.get_part_hp_cur( torso ) == hp );
+        // The same selection still generates the native sound when local.
+        rng_set_engine_seed( chosen );
+        body.process_one_effect( symptoms, false );
+        CHECK_FALSE( sounds::get_monster_sounds().first.empty() );
+    } else if( selected == spasm ) {
+        CHECK( body.get_part_hp_cur( torso ) <= hp - 5 );
+    } else {
+        CHECK( body.get_part_hp_cur( torso ) < hp );
+        CHECK( body.get_hunger() > hunger );
+        CHECK( body.get_thirst() - thirst == body.get_hunger() - hunger );
+    }
+}
+
+TEST_CASE( "home fungal chest rupture applies native damage, bleeding and lethal selection",
+           "[npc][home_fungal_producer][chest_rupture]" )
+{
+    const bool lethal = GENERATE( false, true );
+    CAPTURE( lethal );
+    clear_avatar();
+    clear_npcs();
+    const auto saved_rng = rng_get_engine();
+    on_out_of_scope restore_rng( [&]() { rng_get_engine() = saved_rng; } );
+    home_effect_test_npc body;
+    body.normalize();
+    body.setID( g->assign_npc_id(), true );
+    map &here = get_map();
+    body.spawn_at_precise( here.get_abs( tripoint_bub_ms( -2, 60, 0 ) ) );
+    REQUIRE_FALSE( here.inbounds( body.pos_abs() ) );
+    body.set_mutation( trait_id( "BIONIC_ARM_BASIC_BOTH" ) );
+    REQUIRE( body.has_part( bodypart_id( "robofac_arm_bionic_basic_l" ) ) );
+    if( lethal ) {
+        body.set_mutation( trait_id( "FLIMSY3" ) );
+    }
+    const bodypart_id torso( "torso" );
+    const int hp = body.get_part_hp_cur( torso );
+    REQUIRE( hp > 0 );
+    REQUIRE( ( hp <= 40 ) == lethal );
+    const efftype_id fungus( "fungus" );
+    effect symptoms( effect_source::empty(), &fungus.obj(), 18_hours,
+                     bodypart_str_id::NULL_ID(), false, 3, calendar::turn );
+    REQUIRE( symptoms.get_intensity() == 3 );
+    REQUIRE_FALSE( body.resists_effect( symptoms ) );
+    const int bonus = body.get_lifestyle() / 10;
+    unsigned chosen = 0;
+    for( unsigned seed = 1; seed < 200000 && chosen == 0; ++seed ) {
+        rng_set_engine_seed( seed );
+        if( !one_in( 6000 + bonus * 48 ) && one_in( 36000 + bonus * 240 ) ) {
+            chosen = seed;
+        }
+    }
+    REQUIRE( chosen != 0 );
+    npc_home_body_context home{};
+    detailed_map_entry_counts counts;
+    {
+        rng_set_engine_seed( chosen );
+        scoped_detailed_map_entry_counter count( counts );
+        scoped_npc_home_effects capture( body, "fungal-chest-rupture", true, &home );
+        body.process_one_effect( symptoms, false );
+    }
+    CHECK( body.get_part_hp_cur( torso ) == std::max( 0, hp - 40 ) );
+    CHECK( body.get_effect_dur( efftype_id( "bleed" ), torso ) == 30_minutes );
+    CHECK( body.is_dead_state() == lethal );
+    CHECK( home.lethal_fungal_damage == lethal );
+    CHECK( counts.loads == 0 );
+    CHECK( counts.saves == 0 );
+}
+
+TEST_CASE( "native damage drop preserves faction ownership on the receiving tile",
+           "[npc][home_drop_ownership]" )
+{
+    clear_avatar();
+    clear_npcs();
+    clear_map();
+    map &here = get_map();
+    const tripoint_bub_ms receiving = get_avatar().pos_bub() + point( 5, 5 );
+    here.ter_set( receiving, ter_id( "t_floor" ) );
+    REQUIRE( here.is_tile_loaded( receiving ) );
+    REQUIRE_FALSE( here.veh_at( receiving ) );
+    npc body;
+    body.normalize();
+    body.setID( g->assign_npc_id(), true );
+    body.spawn_at_precise( here.get_abs( receiving ) );
+    item held( itype_id( "rock" ) );
+    const faction_id owner( "free_merchants" );
+    const faction_id old_owner( "your_followers" );
+    held.set_owner( owner );
+    held.set_old_owner( old_owner );
+    held.set_var( "damage_drop_test", "tagged" );
+    body.set_wielded_item( held );
+    REQUIRE( body.get_wielded_item() );
+    REQUIRE( body.can_wield( *body.get_wielded_item() ).success() );
+    REQUIRE( body.get_wielded_item()->get_owner() == owner );
+    const auto original_uid = body.get_wielded_item()->uid().get_value();
+
+    detailed_map_entry_counts counts;
+    {
+        scoped_detailed_map_entry_counter count( counts );
+        body.apply_damage( nullptr, bodypart_id( "arm_l" ), 999 );
+        body.apply_damage( nullptr, bodypart_id( "arm_r" ), 999 );
+        const tripoint_bub_ms offscreen( -1, receiving.y(), receiving.z() );
+        CHECK_FALSE( here.is_tile_loaded( offscreen ) );
+        CHECK_FALSE( here.add_item_or_charges_ret_loc( offscreen, held ) );
+    }
+    CHECK_FALSE( body.is_armed() );
+    REQUIRE( here.i_at( receiving ).size() == 1 );
+    const item &dropped = *here.i_at( receiving ).begin();
+    CHECK( dropped.get_var( "damage_drop_test" ) == "tagged" );
+    CHECK( dropped.get_owner() == owner );
+    CHECK( dropped.get_old_owner() == old_owner );
+    CHECK( dropped.uid().get_value() != original_uid );
+    CHECK( counts.loads == 0 );
+    CHECK( counts.saves == 0 );
+}
+
+TEST_CASE( "home rift producer retains its original position after actor relocation",
+           "[npc][home_rift_producer]" )
+{
+    clear_avatar();
+    clear_npcs();
+    clear_creatures();
+    clear_map();
+    map &here = get_map();
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    auto saved_world = std::move( world );
+    world.clear();
+    on_out_of_scope restore( [&]() {
+        world = std::move( saved_world );
+    } );
+    const tripoint_bub_ms origin = get_avatar().pos_bub() + point( 8, 8 );
+    here.ter_set( origin, ter_id( "t_floor" ) );
+    here.ter_set( origin + point( -1, 0 ), ter_id( "t_wall" ) );
+    here.ter_set( origin + point( 0, -1 ), ter_id( "t_wall" ) );
+    here.ter_set( origin + point( -1, -1 ), ter_id( "t_wall" ) );
+    REQUIRE( here.is_cornerfloor( origin ) );
+    home_effect_test_npc body;
+    body.normalize();
+    body.setID( g->assign_npc_id(), true );
+    body.spawn_at_precise( here.get_abs( origin ) );
+    const efftype_id stun( "stunned" );
+    effect no_rift( effect_source::empty(), &stun.obj(), 5_turns,
+                    bodypart_str_id::NULL_ID(), false, 1, calendar::turn );
+    {
+        scoped_npc_home_effects capture( body, "rift-no-trigger" );
+        body.process_one_effect( no_rift, false );
+    }
+    CHECK( world.pending_home_world_events.empty() );
+    const efftype_id tindrift( "tindrift" );
+    REQUIRE( tindrift.is_valid() );
+    const tripoint_bub_ms no_corner = origin + point( 22, 0 );
+    for( const auto &tile : here.points_in_radius( no_corner, 7 ) ) {
+        here.ter_set( tile, ter_id( "t_floor" ) );
+        here.furn_set( tile, furn_str_id::NULL_ID() );
+    }
+    body.spawn_at_precise( here.get_abs( no_corner ) );
+    effect no_corner_rift( effect_source::empty(), &tindrift.obj(), 5_turns,
+                           bodypart_str_id::NULL_ID(), false, 1, calendar::turn );
+    body.process_one_effect( no_corner_rift, false );
+    CHECK( no_corner_rift.get_duration() == 5_turns );
+    CHECK( world.pending_home_world_events.empty() );
+    body.spawn_at_precise( here.get_abs( origin ) );
+    effect rift( effect_source::empty(), &tindrift.obj(), 5_turns,
+                 bodypart_str_id::NULL_ID(), false, 1, calendar::turn );
+    detailed_map_entry_counts counts;
+    {
+        scoped_detailed_map_entry_counter count( counts );
+        scoped_npc_home_effects capture( body, "rift-selected" );
+        body.process_one_effect( rift, false );
+    }
+    REQUIRE( world.pending_home_world_events.size() == 1 );
+    CHECK( world.pending_home_world_events.front().origin == here.get_abs( origin ) );
+    CHECK( world.pending_home_world_events.front().kind ==
+           bandit_live_world::home_world_event_kind::tindalos_rift );
+    CHECK_FALSE( here.get_field( origin, field_type_id( "fd_tindalos_rift" ) ) );
+    CHECK( counts.loads == 0 );
+    CHECK( counts.saves == 0 );
+    // Direct relocation is test setup, not native travel evidence.
+    body.spawn_at_precise( here.get_abs( origin + point( 15, 0 ) ) );
+    std::ostringstream saved;
+    { JsonOut json( saved ); world.serialize( json ); }
+    JsonValue value = json_loader::from_string( saved.str() );
+    world.deserialize( value.get_object() );
+    g->load_npcs( &here );
+    CHECK( world.pending_home_world_events.empty() );
+    CHECK( here.get_field( origin, field_type_id( "fd_tindalos_rift" ) ) );
+}
+
+TEST_CASE( "offscreen body context supplies sleep and area temperature without a map",
+           "[npc][home_body_context]" )
+{
+    override_option needs_enabled( "NO_NPC_FOOD", "false" );
+    npc body = create_model();
+    body.set_sleepiness( 800 );
+    body.add_effect( efftype_id( "stunned" ), 10_minutes );
+    body.set_mutation( trait_id( "TRANSPIRATION" ) );
+    npc_home_body_context cold{ { 5, 0.5f, true, true }, units::from_celsius( 5 ), true };
+    npc_home_body_context warm = cold;
+    warm.area_temperature = units::from_celsius( 35 );
+    submap_load_counts counts;
+    scoped_submap_load_counter load_counter( counts );
+    const needs_rates cold_rates = body.calc_needs_rates( &cold );
+    const needs_rates warm_rates = body.calc_needs_rates( &warm );
+    CHECK( warm_rates.thirst > cold_rates.thirst );
+    CHECK( warm_rates.recovery > 0 );
+    const int before = body.get_sleepiness();
+    body.update_needs( 60, &warm );
+    CHECK( body.get_sleepiness() < before );
+    CHECK_FALSE( body.has_effect( effect_sleep ) );
+    const time_point saved_turn = calendar::turn;
+    on_out_of_scope restore_turn( [saved_turn]() {
+        calendar::turn = saved_turn;
+    } );
+    const time_point from = body.get_last_updated();
+    calendar::turn = from + 5_minutes;
+    const auto id = body.getID();
+    body.update_body( from, calendar::turn, &warm );
+    CHECK( body.getID() == id );
+    CHECK( body.get_last_updated() == from );
+    CHECK( body.get_effect_dur( efftype_id( "stunned" ) ) == 10_minutes );
+    CHECK_FALSE( body.has_effect( effect_sleep ) );
+    body.set_sleepiness( -20 );
+    body.update_needs( 60, &warm );
+    CHECK_FALSE( warm.asleep );
+    CHECK_FALSE( body.has_effect( effect_sleep ) );
+    CHECK( counts.lookup_calls == 0 );
+    CHECK( counts.unserialize_calls == 0 );
+    CHECK( counts.deserialize_calls == 0 );
 }
 
 TEST_CASE( "NPC activity accounting follows the throttled body's elapsed interval",

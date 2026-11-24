@@ -15,6 +15,8 @@
 #include "cata_utility.h"
 #include "catacharset.h"
 #include "character.h"
+
+#include "npc_home_body.h"
 #include "character_attire.h"
 #include "color.h"
 #include "coordinates.h"
@@ -239,6 +241,12 @@ static int ticks_between( const time_point &from, const time_point &to,
 
 void Character::update_body( const time_point &from, const time_point &to )
 {
+    update_body( from, to, nullptr );
+}
+
+void Character::update_body( const time_point &from, const time_point &to,
+                             npc_home_body_context *home )
+{
     // Early return if we already did update previously on the same turn (e.g. when loading savegame).
     if( to <= last_updated ) {
         last_updated = to;
@@ -252,7 +260,7 @@ void Character::update_body( const time_point &from, const time_point &to )
                 character_modifier_stamina_recovery_breathing_mod )  / get_stamina_max() ), 1 );
         oxygen = std::min( oxygen, get_oxygen_max() );
     }
-    update_stomach( from, to );
+    update_stomach( from, to, home );
     recalculate_enchantment_cache();
     if( ticks_between( from, to, 3_minutes ) > 0 ) {
         magic->update_mana( *this, to_turns<float>( 3_minutes ) );
@@ -264,16 +272,16 @@ void Character::update_body( const time_point &from, const time_point &to )
                                      1 );
         activity_history.try_reduce_weariness( base_bmr(), sleepiness_mod, sleepiness_regen_mod );
 
-        check_needs_extremes();
-        update_needs( five_mins );
-        regen( five_mins );
+        check_needs_extremes( home );
+        update_needs( five_mins, home );
+        regen( five_mins, home );
         // Note: mend ticks once per 5 minutes, but wants rate in TURNS, not 5 minute intervals
         // TODO: change @ref mend to take time_duration
-        mend( five_mins * to_turns<int>( 5_minutes ) );
+        mend( five_mins * to_turns<int>( 5_minutes ), home );
         activity_history.reset_activity_level();
     }
     bool was_sleeping = get_value( "was_sleeping" ).str() == "true";
-    if( in_sleep_state() && was_sleeping ) {
+    if( ( home ? home->asleep : in_sleep_state() ) && was_sleeping ) {
         needs_rates tmp_rates;
         calc_sleep_recovery_rate( tmp_rates );
         const int sleepiness_regen_rate = tmp_rates.recovery;
@@ -281,7 +289,7 @@ void Character::update_body( const time_point &from, const time_point &to )
         mod_daily_sleep( effective_time_slept );
         mod_continuous_sleep( effective_time_slept );
     }
-    if( was_sleeping && !in_sleep_state() ) {
+    if( was_sleeping && !( home ? home->asleep : in_sleep_state() ) ) {
         if( get_continuous_sleep() >= 6_hours ) {
             set_value( "sleep_health_mult", 2 );
         }
@@ -295,9 +303,9 @@ void Character::update_body( const time_point &from, const time_point &to )
     if( calendar::once_every( 1_days ) ) {
         reset_daily_sleep();
     }
-    set_value( "was_sleeping", in_sleep_state() ? "true" : "false" );
+    set_value( "was_sleeping", ( home ? home->asleep : in_sleep_state() ) ? "true" : "false" );
 
-    activity_history.new_turn( in_sleep_state(), to - from );
+    activity_history.new_turn( ( home ? home->asleep : in_sleep_state() ), to - from );
 
     // Cardio related health stuff
     if( calendar::once_every( 1_days ) ) {
@@ -945,7 +953,13 @@ void Character::update_frostbite( const bodypart_id &bp, const int FBwindPower,
 
 void Character::update_stomach( const time_point &from, const time_point &to )
 {
-    const needs_rates rates = calc_needs_rates();
+    update_stomach( from, to, nullptr );
+}
+
+void Character::update_stomach( const time_point &from, const time_point &to,
+                                const npc_home_body_context *home )
+{
+    const needs_rates rates = calc_needs_rates( home );
     // No food/thirst/sleepiness clock at all
     const bool debug_ls = has_trait( trait_DEBUG_LS );
     const bool foodless = debug_ls || !needs_food();

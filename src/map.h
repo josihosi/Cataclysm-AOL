@@ -94,6 +94,36 @@ struct wrapped_vehicle {
 };
 
 using VehicleList = std::vector<wrapped_vehicle>;
+// Opt-in synchronous diagnostics count map entry calls, including cache hits.
+struct detailed_map_entry_counts {
+    std::size_t loads = 0;
+    std::size_t saves = 0;
+    std::size_t region_loads = 0;
+    std::size_t region_saves = 0;
+    std::size_t regions_entered = 0;
+};
+class scoped_detailed_map_entry_counter
+{
+    public:
+        explicit scoped_detailed_map_entry_counter( detailed_map_entry_counts &counts );
+        ~scoped_detailed_map_entry_counter();
+        scoped_detailed_map_entry_counter( const scoped_detailed_map_entry_counter & ) = delete;
+        scoped_detailed_map_entry_counter &operator=( const scoped_detailed_map_entry_counter & ) = delete;
+    private:
+        detailed_map_entry_counts *previous;
+        unsigned previous_depth;
+};
+class scoped_detailed_map_entry_region
+{
+    public:
+        scoped_detailed_map_entry_region();
+        ~scoped_detailed_map_entry_region();
+        scoped_detailed_map_entry_region( const scoped_detailed_map_entry_region & ) = delete;
+        scoped_detailed_map_entry_region &operator=( const scoped_detailed_map_entry_region & ) = delete;
+    private:
+        bool enabled;
+};
+
 class map;
 
 class weather_generator;
@@ -2413,6 +2443,7 @@ class map
         // Clips the area to map bounds
         tripoint_range<tripoint_bub_ms> points_in_rectangle(
             const tripoint_bub_ms &from, const tripoint_bub_ms &to ) const;
+        bool is_tile_loaded( const tripoint_bub_ms &p ) const;
         // despite named "radius", returns a square
         tripoint_range<tripoint_bub_ms> points_in_radius(
             const tripoint_bub_ms &center, size_t radius, size_t radiusz = 0 ) const;

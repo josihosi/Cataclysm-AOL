@@ -502,6 +502,9 @@ struct run_cost_effect {
 
 nutrients default_character_compute_effective_nutrients( const item &comest );
 
+struct npc_home_body_context;
+enum class npc_physiological_death_cause;
+
 class Character : public Creature, public visitable
 {
     public:
@@ -902,6 +905,7 @@ class Character : public Creature, public visitable
           * Handles passive regeneration of pain and maybe hp.
           */
         void regen( int rate_multiplier );
+        void regen( int rate_multiplier, const npc_home_body_context *home );
         /**
          * Check player capable of taking off an item.
          * @param it Thing to be taken off
@@ -944,8 +948,12 @@ class Character : public Creature, public visitable
         void update_body();
         /** Updates all "biology" as if time between `from` and `to` passed. */
         void update_body( const time_point &from, const time_point &to );
+        void update_body( const time_point &from, const time_point &to,
+                          npc_home_body_context *home );
         /** Updates the stomach to give accurate hunger messages */
         void update_stomach( const time_point &from, const time_point &to );
+        void update_stomach( const time_point &from, const time_point &to,
+                             const npc_home_body_context *home );
         /** Updates the mutations from enchantments */
         void update_cached_mutations();
         /** Adds this specific wound to bodypart */
@@ -956,10 +964,13 @@ class Character : public Creature, public visitable
         bool needs_food() const;
         /** Increases hunger, thirst, sleepiness and stimulants wearing off. `rate_multiplier` is for retroactive updates. */
         void update_needs( int rate_multiplier );
+        void update_needs( int rate_multiplier, npc_home_body_context *home );
         needs_rates calc_needs_rates() const;
+        needs_rates calc_needs_rates( const npc_home_body_context *home ) const;
         void calc_sleep_recovery_rate( needs_rates &rates ) const;
         /** Kills the player if too hungry, stimmed up etc., forces tired player to sleep and prints warnings. */
-        void check_needs_extremes();
+        void check_needs_extremes( npc_home_body_context *home = nullptr );
+        void report_physiological_death( npc_physiological_death_cause cause );
         /** Handles the chance to be infected by random diseases */
         void get_sick( bool is_flu = false );
         /** Returns if the player has hibernation mutation and is asleep and well fed */
@@ -2757,7 +2768,7 @@ class Character : public Creature, public visitable
          * Returns >0 if character is sitting/lying and relatively inactive.
          * 1 represents sleep on comfortable bed, so anything above that should be rare.
          */
-        float rest_quality() const;
+        float rest_quality( const npc_home_body_context *home = nullptr ) const;
         /**
          * Average hit points healed per turn.
          */
@@ -3914,7 +3925,7 @@ class Character : public Creature, public visitable
         /** Handles mitigation and application of radiation */
         bool irradiate( float rads, bool bypass = false );
         /** Handles the chance for broken limbs to spontaneously heal to 1 HP */
-        void mend( int rate_multiplier );
+        void mend( int rate_multiplier, const npc_home_body_context *home = nullptr );
 
     private:
         // Amount of radiation (mSv) leaked from carried items.
@@ -4016,6 +4027,7 @@ class Character : public Creature, public visitable
         bool can_sleep();
         /** Processes human-specific effects of effects before calling Creature::process_effects(). */
         void process_effects() override;
+        void apply_queued_effect_transitions();
         /** Handles the still hard-coded effects. */
         void hardcoded_effects( effect &it );
 

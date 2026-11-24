@@ -28,6 +28,7 @@
 #include "inventory.h"
 #include "item.h"
 #include "item_location.h"
+#include "npc_home_body.h"
 #include "line.h"
 #include "lru_cache.h"
 #include "map_scale_constants.h"
@@ -1930,6 +1931,7 @@ class npc : public Character
         dialogue_chatbin chatbin;
         int patience = 0; // Used when we expect the player to leave the area
         npc_follower_rules rules;
+        std::optional<npc_home_pending_death> pending_home_death;
         bool marked_for_death = false; // If true, we die as soon as we respawn!
         bool hit_by_player = false;
         // if true, this NPC is a representative of their faction and, given radio, you can radio them
@@ -1957,6 +1959,12 @@ class npc : public Character
          * Consumes last_updated exactly once, with the ordinary load bounds.
          */
         time_duration catch_up_body();
+        bool catch_up_ordinary_home_for_test( const npc_home_body_environment &environment,
+                                              units::temperature area_temperature,
+                                              bool known_rift_footprint );
+        void restore_home_effect_queue( const npc_home_pending_death &pending );
+        void resume_home_body_after_prevention( const npc_home_pending_death &pending );
+        void resolve_pending_home_death( map *here );
         /**
          * Update body, but throttled.
          */
@@ -1996,6 +2004,10 @@ class npc : public Character
 
         void on_move( const tripoint_abs_ms &old_pos ) override;
     private:
+        void age_body_effects( time_duration elapsed );
+        void advance_body_focus( int minutes );
+        void advance_native_body_interval( time_point start, time_point end );
+        void die_impl( map *here, Creature *killer, const npc_home_pending_death *physiology );
         void execute_llm_intent_action( llm_intent_action action );
         // the weapon we're actually holding when using bionic fake guns
         item real_weapon;

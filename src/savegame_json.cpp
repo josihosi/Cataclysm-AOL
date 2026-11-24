@@ -2140,6 +2140,96 @@ void job_data::deserialize( const JsonValue &jv )
 /*
  * load npc
  */
+void scheduled_effect_t::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "effect", eff_id );
+    json.member( "duration", dur );
+    json.member( "bodypart", bp );
+    json.member( "permanent", permanent );
+    json.member( "intensity", intensity );
+    json.member( "force", force );
+    json.member( "deferred", deferred );
+    json.end_object();
+}
+
+void scheduled_effect_t::deserialize( const JsonObject &data )
+{
+    data.read( "effect", eff_id );
+    data.read( "duration", dur );
+    data.read( "bodypart", bp );
+    data.read( "permanent", permanent );
+    data.read( "intensity", intensity );
+    data.read( "force", force );
+    data.read( "deferred", deferred );
+}
+
+void terminating_effect_t::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "effect", eff_id );
+    json.member( "bodypart", bp );
+    json.end_object();
+}
+
+void terminating_effect_t::deserialize( const JsonObject &data )
+{
+    data.read( "effect", eff_id );
+    data.read( "bodypart", bp );
+}
+
+void npc_home_pending_death::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "position", position );
+    json.member( "applied_until", applied_until );
+    json.member( "work_end", work_end );
+    json.member( "from_body_interval", from_body_interval );
+    if( resume_at ) {
+        json.member( "resume_at", *resume_at );
+    }
+    json.member( "cause", cause );
+    if( !additional_physiological_causes.empty() ) {
+        json.member( "additional_physiological_causes", additional_physiological_causes );
+    }
+    json.member( "effect_phase", effect_phase );
+    json.member( "effect", effect );
+    if( effect_bodypart.is_valid() ) {
+        json.member( "effect_bodypart", effect_bodypart );
+    }
+    json.member( "next_effect_index", next_effect_index );
+    json.member( "pending_removals", pending_removals );
+    json.member( "pending_removal_parts", pending_removal_parts );
+    if( !queued_additions.empty() ) {
+        json.member( "queued_additions", queued_additions );
+    }
+    if( !queued_removals.empty() ) {
+        json.member( "queued_removals", queued_removals );
+    }
+    json.member( "source", source );
+    json.end_object();
+}
+
+void npc_home_pending_death::deserialize( const JsonObject &data )
+{
+    data.read( "position", position );
+    data.read( "applied_until", applied_until );
+    data.read( "work_end", work_end );
+    data.read( "from_body_interval", from_body_interval );
+    data.read( "resume_at", resume_at );
+    data.read( "cause", cause );
+    data.read( "additional_physiological_causes", additional_physiological_causes );
+    data.read( "effect_phase", effect_phase );
+    data.read( "effect", effect );
+    data.read( "effect_bodypart", effect_bodypart );
+    data.read( "next_effect_index", next_effect_index );
+    data.read( "pending_removals", pending_removals );
+    data.read( "pending_removal_parts", pending_removal_parts );
+    data.read( "queued_additions", queued_additions );
+    data.read( "queued_removals", queued_removals );
+    data.read( "source", source );
+}
+
 void npc::deserialize( const JsonObject &data )
 {
     load( data );
@@ -2198,6 +2288,8 @@ void npc::load( const JsonObject &data )
     time_duration companion_mission_t_t;
     std::string act_id;
 
+    pending_home_death.reset();
+    data.read( "pending_home_death", pending_home_death );
     data.read( "marked_for_death", marked_for_death );
     data.read( "dead", dead );
     data.read( "patience", patience );
@@ -2395,6 +2487,9 @@ void npc::store( JsonOut &json ) const
 {
     Character::store( json );
 
+    if( pending_home_death ) {
+        json.member( "pending_home_death", *pending_home_death );
+    }
     json.member( "marked_for_death", marked_for_death );
     json.member( "dead", dead );
     json.member( "patience", patience );

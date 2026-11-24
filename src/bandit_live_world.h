@@ -1525,6 +1525,20 @@ bool crossing_receipt_has_current_owner( const active_outing_state &outing );
 // may progress before saving; only the complete-save owner acknowledges durability.
 bool crossing_receipt_allows_runtime_progress( const active_outing_state &outing );
 
+// Only world actions explicitly selected for offscreen home catch-up.
+enum class home_world_event_kind : int {
+    fungal_spore,
+    tindalos_rift
+};
+struct home_world_event {
+    std::string id;
+    home_world_event_kind kind = home_world_event_kind::fungal_spore;
+    tripoint_abs_ms origin = tripoint_abs_ms::zero;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &data );
+};
+
 struct world_state {
     struct crossing_receipt_identity {
         std::string site_id;
@@ -1545,7 +1559,10 @@ struct world_state {
     std::vector<site_record> sites;
     std::map<tripoint_abs_omt, finite_resource_record> finite_resources;
     std::vector<hostile_target_opportunity_record> hostile_target_opportunities;
+    std::vector<home_world_event> pending_home_world_events;
 
+    // Caller supplies a stable identity for the already-selected outcome.
+    bool enqueue_home_world_event( const home_world_event &event );
     void clear();
     void serialize( JsonOut &json ) const;
     // A canonical read-only representation for harness audits.  It deliberately

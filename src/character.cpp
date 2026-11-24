@@ -9,6 +9,7 @@
 #include <functional>
 #include <memory>
 #include <numeric>
+#include <stdexcept>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -77,6 +78,7 @@
 #include "mtype.h"
 #include "mutation.h"
 #include "npc.h"
+#include "npc_home_body.h"
 #include "omdata.h"
 #include "options.h"
 #include "output.h"
@@ -2421,7 +2423,9 @@ void Character::recalc_sight_limits()
 {
     sight_max = 9999;
     vision_mode_cache.reset();
-    const bool in_light = get_map().ambient_light_at( pos_bub() ) > LIGHT_AMBIENT_LIT;
+    const auto *home = npc_home_effect_context( *this );
+    const float light = home ? home->estimated_light( *this ) : get_map().ambient_light_at( pos_bub() );
+    const bool in_light = light > LIGHT_AMBIENT_LIT;
     bool in_shell = has_active_mutation( trait_SHELL2 ) ||
                     has_active_mutation( trait_SHELL3 );
 
@@ -5383,23 +5387,27 @@ void Character::resume_backlog_activity()
 
 void Character::fall_asleep()
 {
-    // Communicate to the player that he is using items on the floor
-    std::string item_name = is_snuggling();
-    if( item_name == "many" ) {
-        if( one_in( 15 ) ) {
-            add_msg_if_player( _( "You nestle into your pile of clothes for warmth." ) );
-        } else {
-            add_msg_if_player( _( "You use your pile of clothes for warmth." ) );
+    // The offscreen home context already supplies bedding. Floor items and
+    // tile comfort messages are only available to the local sleeper.
+    if( !npc_home_effect_context( *this ) ) {
+        // Communicate to the player that he is using items on the floor
+        std::string item_name = is_snuggling();
+        if( item_name == "many" ) {
+            if( one_in( 15 ) ) {
+                add_msg_if_player( _( "You nestle into your pile of clothes for warmth." ) );
+            } else {
+                add_msg_if_player( _( "You use your pile of clothes for warmth." ) );
+            }
+        } else if( item_name != "nothing" ) {
+            if( one_in( 15 ) ) {
+                add_msg_if_player( _( "You snuggle your %s to keep warm." ), item_name );
+            } else {
+                add_msg_if_player( _( "You use your %s to keep warm." ), item_name );
+            }
         }
-    } else if( item_name != "nothing" ) {
-        if( one_in( 15 ) ) {
-            add_msg_if_player( _( "You snuggle your %s to keep warm." ), item_name );
-        } else {
-            add_msg_if_player( _( "You use your %s to keep warm." ), item_name );
-        }
-    }
 
-    get_comfort_at( pos_bub() ).add_sleep_msgs( *this );
+        get_comfort_at( pos_bub() ).add_sleep_msgs( *this );
+    }
 
     if( has_bionic( bio_sleep_shutdown ) ) {
         add_msg_if_player( _( "Sleep Mode activated.  Disabling sensory response." ) );
@@ -5439,6 +5447,9 @@ void Character::fall_asleep( const time_duration &duration )
         }
     }
     add_effect( effect_sleep, duration );
+    if( auto *home = npc_home_effect_context( *this ) ) {
+        home->asleep = has_effect( effect_sleep );
+    }
     raid_decision_trace::record_sleep_edge( *this, "fall_asleep", "fall_asleep" );
     get_event_bus().send<event_type::character_falls_asleep>( getID(), to_seconds<int>( duration ) );
 }
@@ -6874,6 +6885,48 @@ void Character::process_one_effect( effect &it, bool is_new )
     // Speed and stats are handled in recalc_speed_bonus and reset_stats respectively
 }
 
+void Character::apply_queued_effect_transitions()
+{
+    auto *home = npc_home_effect_context( *this );
+    const bool was_asleep = home && has_effect( effect_sleep );
+    const auto require_supported = [&]( const efftype_id &id ) {
+        if( home && !npc_home_body_effect_supported( id ) ) {
+            throw std::runtime_error( "unsupported queued home effect " + id.str() +
+                                      " for actor " + std::to_string( getID().get_value() ) );
+        }
+    };
+    // Apply new effects from effect->effect chains
+    while( !scheduled_effects.empty() ) {
+        const scheduled_effect_t &effect = scheduled_effects.front();
+        require_supported( effect.eff_id );
+
+        add_effect( effect_source::empty(),
+                    effect.eff_id,
+                    effect.dur,
+                    effect.bp,
+                    effect.permanent,
+                    effect.intensity,
+                    effect.force,
+                    effect.deferred );
+
+        scheduled_effects.pop();
+    }
+
+    // Perform immediate effect removals
+    while( !terminating_effects.empty() ) {
+
+        const terminating_effect_t &effect = terminating_effects.front();
+        require_supported( effect.eff_id );
+
+        remove_effect( effect.eff_id, effect.bp );
+
+        terminating_effects.pop();
+    }
+    if( home && ( was_asleep || has_effect( effect_sleep ) ) ) {
+        home->asleep = get_effect_dur( effect_sleep ) > 0_turns;
+    }
+}
+
 void Character::process_effects()
 {
     map &here = get_map();
@@ -6934,34 +6987,10 @@ void Character::process_effects()
         }
     }
 
-    // Apply new effects from effect->effect chains
-    while( !scheduled_effects.empty() ) {
-        const scheduled_effect_t &effect = scheduled_effects.front();
-
-        add_effect( effect_source::empty(),
-                    effect.eff_id,
-                    effect.dur,
-                    effect.bp,
-                    effect.permanent,
-                    effect.intensity,
-                    effect.force,
-                    effect.deferred );
-
-        scheduled_effects.pop();
-    }
-
-    // Perform immediate effect removals
-    while( !terminating_effects.empty() ) {
-
-        const terminating_effect_t &effect = terminating_effects.front();
-
-        remove_effect( effect.eff_id, effect.bp );
-
-        terminating_effects.pop();
-    }
+    apply_queued_effect_transitions();
 
     // Being stuck in tight spaces sucks. TODO: could be expanded to apply to non-vehicle conditions.
-    if( will_be_cramped_in_vehicle_tile( here, pos_abs() ) ) {
+    if( !npc_home_effect_context( *this ) && will_be_cramped_in_vehicle_tile( here, pos_abs() ) ) {
         if( is_npc() && !has_effect( effect_narcosis ) ) {
             npc &as_npc = dynamic_cast<npc &>( *this );
             as_npc.complain_about( "cramped_vehicle", 30_minutes, "<cramped_vehicle>", false );

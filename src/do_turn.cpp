@@ -121,6 +121,8 @@
 #include "writhing_stalker_ai.h"
 #include "music.h"
 #include "npc.h"
+#include "npc_home_body.h"
+#include "home_admission_timing.h"
 #include "physical_navigation.h"
 #include "npctrade.h"
 #include "options.h"
@@ -158,6 +160,10 @@
 #include "weather_type.h"
 #include "worldfactory.h"
 #include "zombie_rider_overmap_ai.h"
+
+bool caol_map_detail_active();
+std::uint64_t caol_map_detail_begin( const char *, const std::string & );
+void caol_map_detail_end( std::uint64_t, const std::string & );
 
 static const activity_id ACT_AUTODRIVE( "ACT_AUTODRIVE" );
 static const activity_id ACT_FIRSTAID( "ACT_FIRSTAID" );
@@ -3750,15 +3756,14 @@ void evaluate_live_bandit_activation()
                 member_deadlines.emplace( member.npc_id, member.abstract_wound_until_minutes );
             }
             const auto actor = overmap_buffer.find_npc( member.npc_id );
-            if( actor && !actor->is_dead() &&
+            if( actor && !actor->pending_home_death && !actor->is_dead() &&
                 ( actor->pos_abs_omt() == site.anchor ||
                   std::find( site.footprint.begin(), site.footprint.end(), actor->pos_abs_omt() ) !=
                   site.footprint.end() ) ) {
                 home_bodies.emplace( member.npc_id, body_clock( *actor ) );
-            } else if( !actor ) {
-                // Preserve only a previously owned mark for an unavailable
-                // home-assigned member. Admission still authenticates its body
-                // and physical location before consuming any interval.
+            } else if( !actor || actor->pending_home_death ) {
+                // Keep an existing mark for an unavailable or pending-death
+                // home body. Never manufacture a new owner or settle its work.
                 const auto previous = site.home_activation.bodies.find( member.npc_id );
                 if( previous != site.home_activation.bodies.end() ) {
                     home_bodies.emplace( member.npc_id, static_cast<int>( previous->second.world_turn ) );
@@ -9966,6 +9971,13 @@ void refresh_live_bandit_site_readiness( bandit_live_world::site_record &site )
         if( member.state != bandit_live_world::member_state::at_home ) {
             continue;
         }
+        const auto found = overmap_buffer.find_npc( member.npc_id );
+        const npc *guy = found.get();
+        // A selected but unresolved home death is not a finalized casualty.
+        if( guy != nullptr && guy->pending_home_death ) {
+            member.wounded_or_unready = true;
+            continue;
+        }
         if( site.home_activation.member_deadline_pending( member.npc_id,
                 member.abstract_wound_until_minutes, now_minutes ) ) {
             member.wounded_or_unready = true;
@@ -9974,8 +9986,6 @@ void refresh_live_bandit_site_readiness( bandit_live_world::site_record &site )
         if( member.abstract_wound_until_minutes >= 0 ) {
             member.abstract_wound_until_minutes = -1;
         }
-        const auto found = overmap_buffer.find_npc( member.npc_id );
-        const npc *guy = found.get();
         bandit_live_world::routine_member_readiness_snapshot snapshot;
         // A home assignment is not evidence that the body is at home, or
         // that its predecessor clock can be settled for a new departure.
@@ -10009,12 +10019,68 @@ void refresh_live_bandit_member_readiness( bandit_live_world::world_state &state
     }
 }
 
+// Optional, narrowly scoped dispatch investigation. This records inclusive
+// map-load time; mapgen within that load is not independently timed here.
+static const char *home_admission_trace_path()
+{
+    const char *path = std::getenv( "CAOL_HOME_ADMISSION_TRACE" );
+    return path && *path ? path : nullptr;
+}
+
+struct home_admission_trace_clock {
+    std::chrono::steady_clock::time_point wall;
+    std::optional<std::uint64_t> cpu;
+    explicit home_admission_trace_clock( bool enabled ) :
+        wall( enabled ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{} ),
+        cpu( enabled ? redraw_thread_cpu_ns() : std::nullopt ) {}
+    std::string elapsed() const {
+        const auto wall_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                                 std::chrono::steady_clock::now() - wall ).count();
+        const auto cpu_now = redraw_thread_cpu_ns();
+        std::ostringstream out;
+        out << " wall_us=" << wall_us << " thread_cpu_us=";
+        if( cpu && cpu_now && *cpu_now >= *cpu ) {
+            out << ( *cpu_now - *cpu ) / 1000;
+        } else {
+            out << "unavailable";
+        }
+        return out.str();
+    }
+};
+
+static void home_admission_trace( const char *path, const std::string &record )
+{
+    if( path ) {
+        std::ofstream output( path, std::ios::app );
+        output << "turn=" << to_turn<int>( calendar::turn ) << ' ' << record << '\n';
+    }
+}
+
 // Settle the home owner's exact body intervals before choosing a departing
 // party. Once an outing is committed its clock is the body owner, so waiting
 // until then would discard active home time as an untracked pre-outing gap.
+thread_local bool ordinary_home_probe_enabled = false;
+thread_local std::optional<tripoint_abs_ms> ordinary_home_probe_rift_origin;
+thread_local int ordinary_home_probe_successes = 0;
+thread_local home_admission_body_timing *home_body_timing = nullptr;
+
+template<typename CatchUp>
+static auto time_home_body_catch_up( CatchUp &&catch_up )
+{
+    if( !home_body_timing ) {
+        return catch_up();
+    }
+    const auto started = std::chrono::steady_clock::now();
+    const auto result = catch_up();
+    home_body_timing->elapsed += std::chrono::steady_clock::now() - started;
+    ++home_body_timing->calls;
+    return result;
+}
+
 bool prepare_live_bandit_home_admission( bandit_live_world::world_state &world,
         const std::size_t site_index )
 {
+    const scoped_detailed_map_entry_region count_home_admission_entries;
     using namespace bandit_live_world;
     if( site_index >= world.sites.size() ) {
         return false;
@@ -10023,7 +10089,15 @@ bool prepare_live_bandit_home_admission( bandit_live_world::world_state &world,
     // activation pass. Enroll it through the ordinary conservative owner.
     refresh_live_bandit_activation();
     site_record &site = world.sites[site_index];
+    const char *const trace_path = home_admission_trace_path();
+    const home_admission_trace_clock preparation_clock( trace_path != nullptr );
+    if( trace_path ) {
+        home_admission_trace( trace_path, "event=preparation_begin site=" + site.site_id );
+    }
     if( !live_bandit_home_active( site ) || !site.home_activation.initialized() ) {
+        if( trace_path ) {
+            home_admission_trace( trace_path, "event=preparation_inactive site=" + site.site_id );
+        }
         return false;
     }
     std::vector<shared_ptr_fast<npc>> local;
@@ -10036,7 +10110,8 @@ bool prepare_live_bandit_home_admission( bandit_live_world::world_state &world,
         const auto body = overmap_buffer.find_npc( member.npc_id );
         // Unavailable individuals are excluded by readiness below. They do
         // not veto a different authenticated party or receive remote catch-up.
-        if( !body || ( body->pos_abs_omt() != site.anchor &&
+        if( !body || body->pending_home_death ||
+            ( body->pos_abs_omt() != site.anchor &&
                        !site_contains_omt( site, body->pos_abs_omt() ) ) ||
             body->get_last_updated() > calendar::turn ) {
             continue;
@@ -10059,23 +10134,104 @@ bool prepare_live_bandit_home_admission( bandit_live_world::world_state &world,
     }
     for( const auto &body : local ) {
         if( !body->is_dead() ) {
+            const auto before = body->get_last_updated();
+            const home_admission_trace_clock timer( trace_path != nullptr );
             body->catch_up_body();
+            if( trace_path ) {
+                std::ostringstream out;
+                out << "event=local_catchup site=" << site.site_id << " actor=" << body->getID().get_value()
+                    << " omt=" << body->pos_abs_omt().to_string() << " before=" << to_turn<int>( before )
+                    << " after=" << to_turn<int>( body->get_last_updated() ) << timer.elapsed();
+                home_admission_trace( trace_path, out.str() );
+            }
         }
     }
-    for( const auto &group : remote ) {
+    for( auto &group : remote ) {
+        if( test_mode && ordinary_home_probe_enabled ) {
+            const auto profile = site.profile == hostile_site_profile::none ?
+                                 profile_for_site_kind( site.site_kind ) : site.profile;
+            const auto environment = estimate_npc_home_body_environment(
+                                         profile, overmap_buffer.ter_existing( group.first ) );
+            if( environment ) {
+                auto &bodies = group.second;
+                bodies.erase( std::remove_if( bodies.begin(), bodies.end(), [&]( const auto &body ) {
+                    const auto area_temperature = get_weather().get_area_temperature( group.first );
+                    if( time_home_body_catch_up( [&]() {
+                    return body->catch_up_ordinary_home_for_test( *environment, area_temperature,
+                               ordinary_home_probe_rift_origin == body->pos_abs() );
+                    } ) ) {
+                        ++ordinary_home_probe_successes;
+                        return true;
+                    }
+                    return false;
+                } ), bodies.end() );
+            }
+            if( group.second.empty() ) {
+                continue;
+            }
+        }
         tinymap body_map;
+        int cached = 0;
+        if( trace_path ) {
+            const auto base = project_to<coords::sm>( group.first );
+            for( int x = 0; x < 2; ++x ) {
+                for( int y = 0; y < 2; ++y ) {
+                    cached += MAPBUFFER.lookup_submap_cached( base + point_rel_sm( x, y ) ) != nullptr;
+                }
+            }
+        }
+        submap_load_counts counts;
+        std::unique_ptr<scoped_submap_load_counter> counter;
+        if( trace_path ) {
+            counter = std::make_unique<scoped_submap_load_counter>( counts );
+        }
+        const home_admission_trace_clock load_clock( trace_path != nullptr );
+        const auto detail_load = std::getenv( "CAOL_HOME_DETAIL_TRACE" ) ?
+                                 caol_map_detail_begin( "home_map_load", "site=" + site.site_id +
+                                                        " omt=" + group.first.to_string() ) : 0;
         body_map.load( group.first, false );
+        const auto load_duration = trace_path ? load_clock.elapsed() : std::string();
+        caol_map_detail_end( detail_load, "" );
+        if( trace_path ) {
+            counter.reset();
+            std::ostringstream out;
+            out << "event=remote_map_load site=" << site.site_id << " omt=" << group.first.to_string()
+                << " actors=";
+            for( const auto &body : group.second ) {
+                out << body->getID().get_value() << ',';
+            }
+            out << " cached_z_submaps=" << cached << " lookup_calls=" << counts.lookup_calls
+                << " unserialize_calls=" << counts.unserialize_calls << " deserialize_calls="
+                << counts.deserialize_calls << load_duration;
+            home_admission_trace( trace_path, out.str() );
+        }
         swap_map current( *body_map.cast_to_map() );
         for( const auto &body : group.second ) {
             if( !body->is_dead() ) {
-                body->catch_up_body();
+                const auto before = body->get_last_updated();
+                const home_admission_trace_clock timer( trace_path != nullptr );
+                time_home_body_catch_up( [&]() {
+                    return body->catch_up_body();
+                } );
+                if( trace_path ) {
+                    std::ostringstream out;
+                    out << "event=remote_catchup site=" << site.site_id << " omt=" << group.first.to_string()
+                        << " actor=" << body->getID().get_value() << " before=" << to_turn<int>( before )
+                        << " after=" << to_turn<int>( body->get_last_updated() ) << timer.elapsed();
+                    home_admission_trace( trace_path, out.str() );
+                }
             }
         }
+        const home_admission_trace_clock save_clock( trace_path != nullptr );
         body_map.save();
+        if( trace_path ) {
+            home_admission_trace( trace_path, "event=remote_map_save site=" + site.site_id +
+                                  " omt=" + group.first.to_string() + save_clock.elapsed() );
+        }
     }
     bool supply_settled = false;
     for( const auto &body : authenticated ) {
-        if( body->is_dead() ) {
+        if( !body->pending_home_death && body->is_dead() ) {
             if( !supply_settled ) {
                 advance_camp_supply( site, live_bandit_current_minutes() );
                 supply_settled = true;
@@ -10087,6 +10243,11 @@ bool prepare_live_bandit_home_admission( bandit_live_world::world_state &world,
         }
     }
     refresh_live_bandit_site_readiness( site );
+    if( trace_path ) {
+        home_admission_trace( trace_path, "event=preparation_end site=" + site.site_id +
+                              " authenticated=" + std::to_string( authenticated.size() ) +
+                              " remote_groups=" + std::to_string( remote.size() ) + preparation_clock.elapsed() );
+    }
     return true;
 }
 
@@ -10193,6 +10354,12 @@ int live_bandit_materialize_abstract_members(
     };
 
     int created_members = 0;
+    const char *const trace_path = home_admission_trace_path();
+    const home_admission_trace_clock materialize_clock( trace_path != nullptr );
+    if( trace_path ) {
+        home_admission_trace( trace_path, "event=materialization_begin site=" + site.site_id +
+                              " requested=" + std::to_string( members_to_create ) + " purpose=" + purpose );
+    }
     for( int i = 0; i < members_to_create; ++i ) {
         shared_ptr_fast<npc> bandit = make_shared_fast<npc>();
         bandit->normalize();
@@ -10216,6 +10383,11 @@ int live_bandit_materialize_abstract_members(
             overmap_buffer.insert_npc( bandit );
             site = *allocated;
             created_members++;
+            if( trace_path ) {
+                home_admission_trace( trace_path, "event=materialization_member site=" + site.site_id +
+                                      " actor=" + std::to_string( bandit->getID().get_value() ) +
+                                      " omt=" + bandit->pos_abs_omt().to_string() );
+            }
         } else {
             fail( "home_allocation_claim_failed" );
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world lazy materialization skipped member: site="
@@ -10230,6 +10402,10 @@ int live_bandit_materialize_abstract_members(
                                    << " concrete_live_members=" << site.count_live_members()
                                    << " living_total=" << site.living_total
                                    << " template=" << template_id.str() << '\n';
+    }
+    if( trace_path ) {
+        home_admission_trace( trace_path, "event=materialization_end site=" + site.site_id +
+                              " created=" + std::to_string( created_members ) + materialize_clock.elapsed() );
     }
     return created_members;
 }
@@ -17980,6 +18156,26 @@ live_bandit_elevated_recovery_orders recover_live_bandit_local_elevated_watches(
 }
 
 } // namespace
+
+void set_ordinary_home_probe_for_test( bool enabled,
+                                      std::optional<tripoint_abs_ms> known_rift_origin )
+{
+    ordinary_home_probe_enabled = test_mode && enabled;
+    ordinary_home_probe_rift_origin = ordinary_home_probe_enabled ? known_rift_origin : std::nullopt;
+    if( enabled ) {
+        ordinary_home_probe_successes = 0;
+    }
+}
+
+int ordinary_home_probe_successes_for_test()
+{
+    return ordinary_home_probe_successes;
+}
+
+void set_home_admission_body_timing_for_test( home_admission_body_timing *timing )
+{
+    home_body_timing = test_mode ? timing : nullptr;
+}
 
 int signal_live_zombie_riders_from_light_observations_for_test(
     const std::vector<live_bandit_signal_observation> &signals )

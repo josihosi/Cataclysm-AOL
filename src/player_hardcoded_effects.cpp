@@ -6,6 +6,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,6 +16,7 @@
 #include "bodypart.h"
 #include "calendar.h"
 #include "character.h"
+#include "npc_home_body.h"
 #include "coordinates.h"
 #include "creature.h"
 #include "creature_tracker.h"
@@ -212,6 +214,8 @@ static void eff_fun_fake_flu( Character &u, effect & )
 static void eff_fun_fungus( Character &u, effect &it )
 {
     const int intense = it.get_intensity();
+    npc_home_body_context *const home = npc_home_effect_context( u );
+    const bool track_lethal_damage = home && !u.is_dead_state();
     const bool resists = u.resists_effect( it );
     const int bonus = u.get_lifestyle() / 10 + ( resists ? 100 : 0 );
 
@@ -263,13 +267,23 @@ static void eff_fun_fungus( Character &u, effect &it )
                                          _( "<npcname> vomits thousands of live spores!" ) );
 
                 u.set_moves( -to_moves<int>( 5_seconds ) );
-                map &here = get_map();
-                fungal_effects fe;
-                for( const tripoint_bub_ms &sporep : here.points_in_radius( u.pos_bub(), 1 ) ) {
-                    if( sporep == u.pos_bub() ) {
-                        continue;
+                if( npc_home_effects_active( u ) ) {
+                    for( int dx = -1; dx <= 1; ++dx ) {
+                        for( int dy = -1; dy <= 1; ++dy ) {
+                            if( ( dx != 0 || dy != 0 ) && one_in( 4 ) ) {
+                                npc_home_queue_fungal_spore( u, u.pos_abs() + tripoint( dx, dy, 0 ) );
+                            }
+                        }
                     }
-                    fe.fungalize( sporep, &u, 0.25 );
+                } else {
+                    map &here = get_map();
+                    fungal_effects fe;
+                    for( const tripoint_bub_ms &sporep : here.points_in_radius( u.pos_bub(), 1 ) ) {
+                        if( sporep == u.pos_bub() ) {
+                            continue;
+                        }
+                        fe.fungalize( sporep, &u, 0.25 );
+                    }
                 }
                 // We're fucked
             } else if( one_in( 36000 + bonus * 240 ) ) {
@@ -307,6 +321,9 @@ static void eff_fun_fungus( Character &u, effect &it )
                 }
             }
             break;
+    }
+    if( track_lethal_damage && u.is_dead_state() ) {
+        home->lethal_fungal_damage = true;
     }
 }
 static void eff_fun_rat( Character &u, effect &it )
@@ -385,7 +402,9 @@ static void eff_fun_bleed( Character &u, effect &it )
                 }
                 suffer_string = iter->second;
             }
-            u.bleed( here );
+            if( !npc_home_effects_active( u ) ) {
+                u.bleed( here );
+            }
             bodypart_id bp = it.get_bp();
             // piece together the final displayed message here instead of inline, for readability's sake
             // format the chosen string with the relevant variables to make it human-readable, then translate everything we have so far
@@ -1059,6 +1078,13 @@ static void eff_fun_sleep( Character &u, effect &it )
 {
     int intense = it.get_intensity();
     map &here = get_map();
+    const auto *home = npc_home_effect_context( u );
+    const auto ambient_light = [&]() {
+        if( home ) {
+            return home->estimated_light( u );
+        }
+        return here.ambient_light_at( u.pos_bub() );
+    };
 
     u.set_moves( 0 );
     if( u.is_avatar() ) {
@@ -1181,7 +1207,7 @@ static void eff_fun_sleep( Character &u, effect &it )
         if( !u.has_flag( json_flag_SEESLEEP ) ) {
             if( u.has_trait( trait_HEAVYSLEEPER2 ) && !u.has_trait( trait_HIBERNATE ) ) {
                 // So you can too sleep through noon
-                if( ( tirednessVal * 1.25 ) < here.ambient_light_at( u.pos_bub() ) && ( u.get_sleepiness() < 10 ||
+                if( ( tirednessVal * 1.25 ) < ambient_light() && ( u.get_sleepiness() < 10 ||
                         one_in( u.get_sleepiness() / 2 ) ) ) {
                     u.add_msg_if_player( _( "It's too bright to sleep." ) );
                     // Set ourselves up for removal
@@ -1190,14 +1216,14 @@ static void eff_fun_sleep( Character &u, effect &it )
                 }
                 // Ursine hibernators would likely do so indoors.  Plants, though, might be in the sun.
             } else if( u.has_trait( trait_HIBERNATE ) ) {
-                if( ( tirednessVal * 5 ) < here.ambient_light_at( u.pos_bub() ) && ( u.get_sleepiness() < 10 ||
+                if( ( tirednessVal * 5 ) < ambient_light() && ( u.get_sleepiness() < 10 ||
                         one_in( u.get_sleepiness() / 2 ) ) ) {
                     u.add_msg_if_player( _( "It's too bright to sleep." ) );
                     // Set ourselves up for removal
                     it.set_duration( 0_turns );
                     woke_up = true;
                 }
-            } else if( tirednessVal < here.ambient_light_at( u.pos_bub() ) && ( u.get_sleepiness() < 10 ||
+            } else if( tirednessVal < ambient_light() && ( u.get_sleepiness() < 10 ||
                        one_in( u.get_sleepiness() / 2 ) ) ) {
                 u.add_msg_if_player( _( "It's too bright to sleep." ) );
                 // Set ourselves up for removal
@@ -1380,6 +1406,14 @@ void Character::hardcoded_effects( effect &it )
             }
         }
     } else if( id == effect_tindrift ) {
+        if( npc_home_effects_active( *this ) ) {
+            if( const auto *home = npc_home_effect_context( *this ); home && !home->known_rift_footprint ) {
+                throw std::runtime_error( "home rift requires a verified qualifying corner" );
+            }
+            npc_home_queue_tindalos_rift( *this, pos_abs() );
+            it.set_duration( 0_turns );
+            return;
+        }
         add_msg_if_player( m_bad, _( "You are beset with a vision of a prowling beast." ) );
         for( const tripoint_bub_ms &dest : here.points_in_radius( pos, 6 ) ) {
             if( here.is_cornerfloor( dest ) ) {

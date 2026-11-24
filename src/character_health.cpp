@@ -1,5 +1,7 @@
 #include "character.h"
 
+#include "npc_home_body.h"
+
 #include <algorithm>
 #include <climits>
 #include <cmath>
@@ -1204,13 +1206,18 @@ int Character::get_max_healthy() const
 
 void Character::regen( int rate_multiplier )
 {
+    regen( rate_multiplier, nullptr );
+}
+
+void Character::regen( int rate_multiplier, const npc_home_body_context *home )
+{
     int pain_ticks = std::max( 1, roll_remainder( enchantment_cache->modify_value(
                                    enchant_vals::mod::PAIN_REMOVE, rate_multiplier ) ) );
     while( get_pain() > 0 && pain_ticks-- > 0 ) {
         mod_pain( -roll_remainder( 0.2f + get_pain() / 50.0f ) );
     }
 
-    float rest = rest_quality();
+    const float rest = rest_quality( home );
     float heal_rate = healing_rate( rest ) * to_turns<int>( 5_minutes );
     if( heal_rate > 0.0f ) {
         int healing_apply = roll_remainder( rate_multiplier * heal_rate );
@@ -1429,6 +1436,11 @@ bool Character::needs_food() const
 
 void Character::update_needs( int rate_multiplier )
 {
+    update_needs( rate_multiplier, nullptr );
+}
+
+void Character::update_needs( int rate_multiplier, npc_home_body_context *home )
+{
     // Stasis NPCs don't accumulate any needs.
     if( has_trait( trait_NPC_STASIS ) ) {
         return;
@@ -1439,11 +1451,11 @@ void Character::update_needs( int rate_multiplier )
     // No food/thirst/sleepiness clock at all
     const bool debug_ls = has_trait( trait_DEBUG_LS );
     // No food/thirst, capped sleepiness clock (only up to tired)
-    const bool asleep = !sleep.is_null();
+    const bool asleep = home ? home->asleep : !sleep.is_null();
     const bool lying = asleep || has_effect( effect_lying_down ) ||
                        activity.id() == ACT_TRY_SLEEP;
 
-    needs_rates rates = calc_needs_rates();
+    needs_rates rates = calc_needs_rates( home );
 
     const bool wasnt_sleepinessd = get_sleepiness() <= sleepiness_levels::DEAD_TIRED;
     // Don't increase sleepiness if sleeping or trying to sleep or if we're at the cap.
@@ -1472,7 +1484,11 @@ void Character::update_needs( int rate_multiplier )
             int recovered = roll_remainder( rates.recovery * rate_multiplier );
             if( get_sleepiness() - recovered < -20 ) {
                 // Should be wake up, but that could prevent some retroactive regeneration
-                sleep.set_duration( 1_turns );
+                if( home && sleep.is_null() ) {
+                    home->asleep = false;
+                } else {
+                    sleep.set_duration( 1_turns );
+                }
                 mod_sleepiness( -25 );
             } else {
                 if( has_effect( effect_disrupted_sleep ) || has_effect( effect_recently_coughed ) ) {
@@ -1492,7 +1508,8 @@ void Character::update_needs( int rate_multiplier )
                 // Sleeping on a comfy bed, bionic   = 9x rest_modifier
                 float rest_modifier = ( has_flag( json_flag_STOP_SLEEP_DEPRIVATION ) ? 3 : 1 );
 
-                const int comfort = get_comfort_at( pos_bub() ).comfort;
+                const int comfort = home ? home->environment.sleep_comfort :
+                                    get_comfort_at( pos_bub() ).comfort;
                 if( comfort >= comfort_data::COMFORT_VERY_COMFORTABLE ) {
                     rest_modifier *= 3;
                 } else if( comfort >= comfort_data::COMFORT_COMFORTABLE ) {
@@ -1561,8 +1578,13 @@ void Character::update_needs( int rate_multiplier )
 
 needs_rates Character::calc_needs_rates() const
 {
+    return calc_needs_rates( nullptr );
+}
+
+needs_rates Character::calc_needs_rates( const npc_home_body_context *home ) const
+{
     const effect &sleep = get_effect( effect_sleep );
-    const bool asleep = !sleep.is_null();
+    const bool asleep = home ? home->asleep : !sleep.is_null();
 
     needs_rates rates;
     rates.hunger = metabolic_rate();
@@ -1595,8 +1617,8 @@ needs_rates Character::calc_needs_rates() const
 
     if( has_trait( trait_TRANSPIRATION ) ) {
         // Transpiration, the act of moving nutrients with evaporating water, can take a very heavy toll on your thirst when it's really hot.
-        rates.thirst *= ( ( units::to_fahrenheit( get_weather().get_temperature(
-                                pos_bub() ) ) - 32.5f ) / 40.0f );
+        rates.thirst *= ( ( units::to_fahrenheit( home ? home->area_temperature :
+                                get_weather().get_temperature( pos_bub() ) ) - 32.5f ) / 40.0f );
     }
 
     rates.hunger = enchantment_cache->modify_value( enchant_vals::mod::HUNGER, rates.hunger );
@@ -1639,52 +1661,115 @@ void Character::calc_sleep_recovery_rate( needs_rates &rates ) const
     rates.recovery -= static_cast<float>( get_perceived_pain() ) / 60;
 }
 
-void Character::check_needs_extremes()
+static constexpr std::pair<npc_physiological_death_cause, std::string_view> physiological_death_ids[] = {
+    { npc_physiological_death_cause::stimulant_overdose, "stimulant_overdose" },
+    { npc_physiological_death_cause::respiratory_overdose, "respiratory_overdose" },
+    { npc_physiological_death_cause::jetinjector_overdose, "jetinjector_overdose" },
+    { npc_physiological_death_cause::adrenaline_overdose, "adrenaline_overdose" },
+    { npc_physiological_death_cause::alcohol_overdose, "alcohol_overdose" },
+    { npc_physiological_death_cause::starvation, "starvation" },
+    { npc_physiological_death_cause::dehydration, "dehydration" }
+};
+
+std::string_view npc_physiological_death_id( npc_physiological_death_cause cause )
 {
-    // Check if we've overdosed... in any deadly way.
-    if( get_stim() > 250 ) {
-        add_msg_player_or_npc( m_bad,
-                               _( "You have a sudden heart attack!" ),
-                               _( "<npcname> has a sudden heart attack!" ) );
-        get_event_bus().send<event_type::dies_from_drug_overdose>( getID(), efftype_id() );
-        set_part_hp_cur( body_part_torso, 0 );
-    } else if( get_stim() < -200 || get_painkiller() > 240 ) {
-        add_msg_player_or_npc( m_bad,
-                               _( "Your breathing stops completely." ),
-                               _( "<npcname>'s breathing stops completely." ) );
-        get_event_bus().send<event_type::dies_from_drug_overdose>( getID(), efftype_id() );
-        set_part_hp_cur( body_part_torso, 0 );
-    } else if( has_effect( effect_jetinjector ) && get_effect_dur( effect_jetinjector ) > 40_minutes ) {
-        if( !has_flag( json_flag_PAIN_IMMUNE ) ) {
-            add_msg_player_or_npc( m_bad,
-                                   _( "Your heart spasms painfully and stops." ),
-                                   _( "<npcname>'s heart spasms painfully and stops." ) );
-        } else {
-            add_msg_player_or_npc( _( "Your heart spasms and stops." ),
-                                   _( "<npcname>'s heart spasms and stops." ) );
+    for( const auto &entry : physiological_death_ids ) {
+        if( entry.first == cause ) {
+            return entry.second;
         }
-        get_event_bus().send<event_type::dies_from_drug_overdose>( getID(), effect_jetinjector );
+    }
+    return {};
+}
+
+std::optional<npc_physiological_death_cause> npc_physiological_death_from_id( std::string_view id )
+{
+    for( const auto &entry : physiological_death_ids ) {
+        if( entry.second == id ) {
+            return entry.first;
+        }
+    }
+    return std::nullopt;
+}
+
+void Character::report_physiological_death( npc_physiological_death_cause cause )
+{
+    using death_cause = npc_physiological_death_cause;
+    efftype_id overdose_effect;
+    switch( cause ) {
+        case death_cause::stimulant_overdose:
+            add_msg_player_or_npc( m_bad,
+                                   _( "You have a sudden heart attack!" ),
+                                   _( "<npcname> has a sudden heart attack!" ) );
+            break;
+        case death_cause::respiratory_overdose:
+            add_msg_player_or_npc( m_bad,
+                                   _( "Your breathing stops completely." ),
+                                   _( "<npcname>'s breathing stops completely." ) );
+            break;
+        case death_cause::jetinjector_overdose:
+            if( !has_flag( json_flag_PAIN_IMMUNE ) ) {
+                add_msg_player_or_npc( m_bad,
+                                       _( "Your heart spasms painfully and stops." ),
+                                       _( "<npcname>'s heart spasms painfully and stops." ) );
+            } else {
+                add_msg_player_or_npc( _( "Your heart spasms and stops." ),
+                                       _( "<npcname>'s heart spasms and stops." ) );
+            }
+            overdose_effect = effect_jetinjector;
+            break;
+        case death_cause::adrenaline_overdose:
+            add_msg_player_or_npc( m_bad,
+                                   _( "Your heart spasms and stops." ),
+                                   _( "<npcname>'s heart spasms and stops." ) );
+            overdose_effect = effect_adrenaline;
+            break;
+        case death_cause::alcohol_overdose:
+            add_msg_player_or_npc( m_bad,
+                                   _( "Your breathing slows down to a stop." ),
+                                   _( "<npcname>'s breathing slows down to a stop." ) );
+            overdose_effect = effect_drunk;
+            break;
+        case death_cause::starvation:
+            add_msg_if_player( m_bad, _( "You have starved to death." ) );
+            get_event_bus().send<event_type::dies_of_starvation>( getID() );
+            return;
+        case death_cause::dehydration:
+            add_msg_if_player( m_bad, _( "You have died of dehydration." ) );
+            get_event_bus().send<event_type::dies_of_thirst>( getID() );
+            return;
+    }
+    get_event_bus().send<event_type::dies_from_drug_overdose>( getID(), overdose_effect );
+}
+
+void Character::check_needs_extremes( npc_home_body_context *home )
+{
+    using death_cause = npc_physiological_death_cause;
+    const auto select_lethal_cause = [&]( death_cause cause ) {
+        if( home && home->physiological_deaths ) {
+            home->physiological_deaths->push_back( cause );
+        } else {
+            report_physiological_death( cause );
+        }
         set_part_hp_cur( body_part_torso, 0 );
+    };
+    // Overdose checks are mutually exclusive. Starvation and dehydration
+    // below can select additional causes in the same body step.
+    if( get_stim() > 250 ) {
+        select_lethal_cause( death_cause::stimulant_overdose );
+    } else if( get_stim() < -200 || get_painkiller() > 240 ) {
+        select_lethal_cause( death_cause::respiratory_overdose );
+    } else if( has_effect( effect_jetinjector ) && get_effect_dur( effect_jetinjector ) > 40_minutes ) {
+        select_lethal_cause( death_cause::jetinjector_overdose );
     } else if( get_effect_dur( effect_adrenaline ) > 50_minutes ) {
-        add_msg_player_or_npc( m_bad,
-                               _( "Your heart spasms and stops." ),
-                               _( "<npcname>'s heart spasms and stops." ) );
-        get_event_bus().send<event_type::dies_from_drug_overdose>( getID(), effect_adrenaline );
-        set_part_hp_cur( body_part_torso, 0 );
+        select_lethal_cause( death_cause::adrenaline_overdose );
     } else if( get_effect_int( effect_drunk ) > 4 ) {
-        add_msg_player_or_npc( m_bad,
-                               _( "Your breathing slows down to a stop." ),
-                               _( "<npcname>'s breathing slows down to a stop." ) );
-        get_event_bus().send<event_type::dies_from_drug_overdose>( getID(), effect_drunk );
-        set_part_hp_cur( body_part_torso, 0 );
+        select_lethal_cause( death_cause::alcohol_overdose );
     }
 
     // check if we've starved
     if( needs_food() ) {
         if( get_stored_kcal() <= 0 ) {
-            add_msg_if_player( m_bad, _( "You have starved to death." ) );
-            get_event_bus().send<event_type::dies_of_starvation>( getID() );
-            set_part_hp_cur( body_part_torso, 0 );
+            select_lethal_cause( death_cause::starvation );
         } else {
             if( calendar::once_every( 12_hours ) ) {
                 std::string category;
@@ -1722,9 +1807,7 @@ void Character::check_needs_extremes()
     if( needs_food() && get_thirst() >= 600 && ( stomach.get_water() == 0_ml ||
             guts.get_water() == 0_ml ) ) {
         if( get_thirst() >= 1200 ) {
-            add_msg_if_player( m_bad, _( "You have died of dehydration." ) );
-            get_event_bus().send<event_type::dies_of_thirst>( getID() );
-            set_part_hp_cur( body_part_torso, 0 );
+            select_lethal_cause( death_cause::dehydration );
         } else if( get_thirst() >= 1000 && calendar::once_every( 30_minutes ) ) {
             add_msg_if_player( m_warning, _( "Even your eyes feel dry…" ) );
         } else if( get_thirst() >= 800 && calendar::once_every( 30_minutes ) ) {
@@ -1924,8 +2007,15 @@ bool Character::is_blind() const
            has_flag( json_flag_BLIND ) || get_limb_score( limb_score_vision ) <= 0;
 }
 
-float Character::rest_quality() const
+float Character::rest_quality( const npc_home_body_context *home ) const
 {
+    if( home ) {
+        const float comfort = home->asleep ? home->environment.sleeping_rest_quality :
+                              home->environment.seating ? 0.5f : 0.3f;
+        const float weather_penalty = ( std::max( -has_morale( morale_cold ), 0 ) +
+                                        std::max( -has_morale( morale_hot ), 0 ) ) / 10.0f;
+        return home->asleep ? std::max( comfort - weather_penalty, 0.0f ) : comfort - weather_penalty;
+    }
     map &here = get_map();
     const tripoint_bub_ms your_pos = pos_bub();
     float rest = 0.0f;
@@ -2451,8 +2541,10 @@ void Character::cough( bool harmful, int loudness )
     if( !is_npc() ) {
         add_msg( m_bad, _( "You cough heavily." ) );
     }
-    sounds::sound( pos_bub(), loudness, sounds::sound_t::speech, _( "a hacking cough." ), false, "misc",
-                   "cough" );
+    if( !npc_home_effects_active( *this ) ) {
+        sounds::sound( pos_bub(), loudness, sounds::sound_t::speech, _( "a hacking cough." ), false,
+                       "misc", "cough" );
+    }
 
     mod_moves( -get_speed() * 0.8 );
 
@@ -2464,6 +2556,9 @@ void Character::wake_up()
     //Can't wake up if under anesthesia
     if( has_effect( effect_narcosis ) ) {
         return;
+    }
+    if( auto *home = npc_home_effect_context( *this ) ) {
+        home->asleep = false;
     }
 
     remove_value( "involuntary_sleep_start_turn" );
@@ -2496,7 +2591,9 @@ void Character::vomit()
     get_event_bus().send<event_type::throws_up>( getID() );
 
     if( stomach_contents_before_vomit != 0_ml ) {
-        get_map().add_field( adjacent_tile(), fd_bile, 1 );
+        if( !npc_home_effects_active( *this ) ) {
+            get_map().add_field( adjacent_tile(), fd_bile, 1 );
+        }
         add_msg_player_or_npc( m_bad, _( "You throw up heavily!" ), _( "<npcname> throws up heavily!" ) );
     }
     // needed to ensure digesting vitamin_type::DRUGs are also emptied, even on an empty stomach.

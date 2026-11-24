@@ -56,6 +56,7 @@
 #include "monster.h"
 #include "mtype.h"
 #include "npc.h"
+#include "npc_home_body.h"
 #include "options.h"
 #include "output.h"
 #include "point.h"
@@ -2307,8 +2308,10 @@ void Creature::process_effects()
     std::vector<bodypart_id> rem_bps;
 
     // Decay/removal of effects
+    int effect_index = 0;
     for( auto &elem : *effects ) {
         for( auto &_it : elem.second ) {
+            ++effect_index;
             // Do not freeze the effect with the FREEZE_EFFECTS flag.
             if( has_flag( json_flag_FREEZE_EFFECTS ) &&
                 !_it.second.has_flag( json_flag_FREEZE_EFFECTS ) ) {
@@ -2339,6 +2342,28 @@ void Creature::process_effects()
                     cata::event sent( e.death_event(), calendar::turn, std::move( event_data ) );
                     get_event_bus().send( sent );
                 }
+                // Scoped capture retains the selected key and the removals
+                // already earned; local resolution resumes after this key.
+                // Admission does not enable this path until it owns all work.
+                npc *home_npc = as_npc();
+                if( home_npc && npc_home_capture_fatal_effect( *home_npc ) &&
+                    !home_npc->pending_home_death && scheduled_effects.empty() &&
+                    terminating_effects.empty() ) {
+                    npc_home_pending_death pending;
+                    pending.position = home_npc->pos_abs();
+                    pending.applied_until = home_npc->get_last_updated();
+                    pending.work_end = pending.applied_until;
+                    pending.cause = "effect_kill";
+                    pending.effect_phase = "effect_kill";
+                    pending.effect = e.get_id();
+                    pending.effect_bodypart = e.get_bp();
+                    pending.next_effect_index = effect_index;
+                    pending.pending_removals = rem_ids;
+                    pending.pending_removal_parts = rem_bps;
+                    pending.source = e.get_source();
+                    home_npc->pending_home_death = std::move( pending );
+                    return;
+                }
                 die( &here, e.get_source().resolve_creature() );
             }
         }
@@ -2346,6 +2371,56 @@ void Creature::process_effects()
 
     // Actually remove effects. This should be the last thing done in process_effects().
     for( size_t i = 0; i < rem_ids.size(); ++i ) {
+        remove_effect( rem_ids[i], rem_bps[i] );
+    }
+}
+
+// Continue the native decay half after a saved fatal decision.  The body and
+// Character effect passes have already run.  Restart strictly after the saved
+// key so prevention does not reroll the selected death; re-read the ordered
+// map after each effect because a death EOC may change it.
+void Creature::resume_home_effect_decay( const npc_home_pending_death &pending, map &here )
+{
+    std::vector<efftype_id> rem_ids = pending.pending_removals;
+    std::vector<bodypart_id> rem_bps = pending.pending_removal_parts;
+    efftype_id cursor_id = pending.effect;
+    bodypart_id cursor_part = pending.effect_bodypart;
+    while( true ) {
+        bool found = false;
+        auto outer = effects->lower_bound( cursor_id );
+        while( outer != effects->end() ) {
+            auto inner = outer->first == cursor_id ? outer->second.upper_bound( cursor_part ) :
+                         outer->second.begin();
+            if( inner != outer->second.end() ) {
+                found = true;
+                cursor_id = outer->first;
+                cursor_part = inner->first;
+                effect &e = inner->second;
+                if( !( has_flag( json_flag_FREEZE_EFFECTS ) &&
+                       !e.has_flag( json_flag_FREEZE_EFFECTS ) ) ) {
+                    for( const auto &removed : e.get_removes_effects() ) {
+                        rem_ids.push_back( removed );
+                        rem_bps.emplace_back( bodypart_str_id::NULL_ID() );
+                    }
+                    const int prev_int = e.get_intensity();
+                    e.decay( rem_ids, rem_bps, calendar::turn, is_avatar(), *effects );
+                    if( e.get_intensity() != prev_int && e.get_duration() > 0_turns ) {
+                        on_effect_int_change( e.get_id(), e.get_intensity(), e.get_bp() );
+                    }
+                    if( e.kill_roll( resists_effect( e ) ) ) {
+                        add_msg_if_player( m_bad, e.get_death_message() );
+                        die( &here, e.get_source().resolve_creature() );
+                    }
+                }
+                break;
+            }
+            ++outer;
+        }
+        if( !found ) {
+            break;
+        }
+    }
+    for( std::size_t i = 0; i < rem_ids.size(); ++i ) {
         remove_effect( rem_ids[i], rem_bps[i] );
     }
 }

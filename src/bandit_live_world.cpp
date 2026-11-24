@@ -14537,6 +14537,45 @@ bool site_record::eligible_for_empty_site_retirement() const
            count_home_side_signals() == 0 && !has_active_outside_pressure();
 }
 
+void home_world_event::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "id", id );
+    json.member( "kind", kind == home_world_event_kind::fungal_spore ? "fungal_spore" :
+                 "tindalos_rift" );
+    json.member( "origin", origin );
+    json.end_object();
+}
+
+void home_world_event::deserialize( const JsonObject &data )
+{
+    id = data.get_string( "id" );
+    const std::string name = data.get_string( "kind" );
+    if( name == "fungal_spore" ) {
+        kind = home_world_event_kind::fungal_spore;
+    } else if( name == "tindalos_rift" ) {
+        kind = home_world_event_kind::tindalos_rift;
+    } else {
+        data.throw_error( "unsupported home world event kind" );
+    }
+    data.read( "origin", origin );
+    if( id.empty() ) {
+        data.throw_error( "home world event identity is empty" );
+    }
+}
+
+bool world_state::enqueue_home_world_event( const home_world_event &event )
+{
+    if( event.id.empty() || std::any_of( pending_home_world_events.begin(),
+                                        pending_home_world_events.end(), [&]( const auto &existing ) {
+        return existing.id == event.id;
+    } ) ) {
+        return false;
+    }
+    pending_home_world_events.push_back( event );
+    return true;
+}
+
 void world_state::clear()
 {
     schema_version = 7;
@@ -14547,6 +14586,7 @@ void world_state::clear()
     sites.clear();
     finite_resources.clear();
     hostile_target_opportunities.clear();
+    pending_home_world_events.clear();
 }
 
 bool crossing_receipt_has_current_owner( const active_outing_state &outing )
@@ -14660,6 +14700,9 @@ void world_state::serialize( JsonOut &json ) const
         json.end_array();
     }
     json.member( "hostile_target_opportunities", hostile_target_opportunities );
+    if( !pending_home_world_events.empty() ) {
+        json.member( "pending_home_world_events", pending_home_world_events );
+    }
     json.end_object();
 }
 
@@ -14684,6 +14727,13 @@ void world_state::deserialize( const JsonObject &jo )
         jo.throw_error( "hostile live-world schema version is unsupported" );
     }
     jo.read( "owner_id", candidate.owner_id );
+    jo.read( "pending_home_world_events", candidate.pending_home_world_events );
+    std::set<std::string> home_event_ids;
+    for( const auto &event : candidate.pending_home_world_events ) {
+        if( !home_event_ids.insert( event.id ).second ) {
+            jo.throw_error( "duplicate home world event identity" );
+        }
+    }
     if( jo.has_member( "hostile_target_opportunities" ) ) {
         if( loaded_schema_version < 7 ) {
             jo.throw_error( "pre-v7 world cannot contain hostile target opportunities" );
