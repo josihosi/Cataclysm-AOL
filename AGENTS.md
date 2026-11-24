@@ -13,6 +13,8 @@ Use that case to choose what to inspect. For a small change, one good example is
 
 ## Making a change
 
+Implement gameplay changes in the production caller on `dev`. Building and playing that revision should exercise the new behavior by default. Tests and replays may set up a scenario and measure it, but must exercise the same gameplay code. Do not put the change behind a test-only switch or maintain a parallel gameplay implementation for comparison. Use Git revisions to compare behavior and revert a change that proves wrong.
+
 Trace the production caller and the inputs it actually reads. Check the branch you changed and any independent path that can produce the same visible result. For a gameplay finding, identify the build, starting conditions and first observable difference so someone else can reproduce it.
 
 Use the existing Mac `dev` or Windows `dev_w` checkout and build cache. Coordinate shared files and builds with their current owner. Preserve personal saves and active work. When a run ends, keep the needed build, continuation and concise result, and remove your disposable output.
