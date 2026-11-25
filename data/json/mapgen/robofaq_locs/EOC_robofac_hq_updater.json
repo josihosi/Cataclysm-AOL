@@ -12,9 +12,10 @@
     "global": true,
     "condition": {
       "and": [
+        { "math": [ "time_since('cataclysm', 'unit':'days') >= 20" ] },
+        { "math": [ "robofac_destroyed != 1" ] },
         { "u_near_om_location": "robofachq_surface_road1", "range": 180 },
-        { "not": { "u_near_om_location": "robofachq_surface_road1", "range": 4 } },
-        { "math": [ "robofac_destroyed != 1" ] }
+        { "not": { "u_near_om_location": "robofachq_surface_road1", "range": 4 } }
       ]
     },
     "effect": {
