@@ -907,10 +907,10 @@ bool route_to_destination( Character &you, player_activity &act,
     return true;
 }
 
-bool sort_skip_item( Character &you, const item *it,
-                     const std::vector<item_location> &other_activity_items,
-                     bool ignore_favorite, const tripoint_abs_ms &src,
-                     bool *spillable_skipped )
+static bool sort_skip_item( Character &you, const item *it,
+                            const std::vector<item_location> &other_activity_items,
+                            bool ignore_favorite, const tripoint_abs_ms &src,
+                            bool *spillable_skipped, const zone_type_id *known_destination )
 {
     const zone_manager &mgr = zone_manager::get_manager();
 
@@ -955,8 +955,8 @@ bool sort_skip_item( Character &you, const item *it,
     if( mgr.has( zone_type_CAMP_LOCKER, src, fac_id ) ) {
         return true;
     }
-    const zone_type_id zt_id = mgr.get_near_zone_type_for_item( *it, you.pos_abs(),
-                               MAX_VIEW_DISTANCE, fac_id );
+    const zone_type_id zt_id = known_destination ? *known_destination :
+                               mgr.get_near_zone_type_for_item( *it, you.pos_abs(), MAX_VIEW_DISTANCE, fac_id );
     // Skip items already at their destination regardless of whether the zone
     // is bound to terrain or vehicle cargo. Delivery tries cargo first, so
     // items often land in vehicle storage even at terrain-bound zones (e.g.,
@@ -972,6 +972,15 @@ bool sort_skip_item( Character &you, const item *it,
     }
 
     return false;
+}
+
+bool sort_skip_item( Character &you, const item *it,
+                     const std::vector<item_location> &other_activity_items,
+                     bool ignore_favorite, const tripoint_abs_ms &src,
+                     bool *spillable_skipped )
+{
+    return sort_skip_item( you, it, other_activity_items, ignore_favorite, src, spillable_skipped,
+                           nullptr );
 }
 
 unload_sort_options set_unload_options( Character &you, const tripoint_abs_ms &src,
@@ -1161,7 +1170,7 @@ bool has_items_to_sort( Character &you, const tripoint_abs_ms &src,
         }
 
         if( sort_skip_item( you, it, other_activity_items,
-                            zone_unload_options.ignore_favorite, src, spillable_skipped ) ) {
+                            zone_unload_options.ignore_favorite, src, spillable_skipped, &dest_zone_type_id ) ) {
             continue;
         }
 
