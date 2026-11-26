@@ -20,9 +20,12 @@ def main():
     parser.add_argument('--sample-party', action='store_true',
                         help='track the freshly selected roster instead of requiring the original replay IDs')
     parser.add_argument('--recloak-after-contact', action='store_true')
+    parser.add_argument('--world-reload', action='store_true')
     args = parser.parse_args()
     if args.sample_party and not args.continue_visible:
         parser.error('sample party requires visible continuation')
+    if args.world_reload and not args.recloak_after_contact:
+        parser.error('world reload requires the recloaked continuation')
     if args.recloak_after_contact and not args.continue_visible:
         parser.error('recloak requires visible continuation')
     if not (0 <= args.setup_seed < 2 ** 64 and 0 < args.game_seed < 2 ** 32):
@@ -36,7 +39,7 @@ def main():
                 'runner_sha256': digest(Path(__file__)), 'data_sha256': data_digest(),
                 'setup_seed': args.setup_seed, 'game_seed': args.game_seed,
                 'setup': 'fixed fresh tower, real generated roster and daytime smoke, avatar cloaked',
-                'sample_party': args.sample_party, 'continue_visible': args.continue_visible, 'recloak_after_contact': args.recloak_after_contact}
+                'sample_party': args.sample_party, 'continue_visible': args.continue_visible, 'recloak_after_contact': args.recloak_after_contact, 'world_reload': args.world_reload}
     env = {k: v for k, v in os.environ.items() if not k.startswith(('CAOL_', 'OPENCLAW_'))}
     env['CAOL_MIGO_RESPONSE_PILOT'] = '1'
     if args.sample_party:
@@ -45,6 +48,8 @@ def main():
         env['CAOL_MIGO_RESPONSE_VISIBLE'] = '1'
     if args.recloak_after_contact:
         env['CAOL_MIGO_RESPONSE_RECLOAK'] = '1'
+    if args.world_reload:
+        env['CAOL_MIGO_RESPONSE_WORLD_RELOAD'] = '1'
     with tempfile.TemporaryDirectory(prefix='migo-response-') as userdir:
         proc = subprocess.run(['/usr/bin/nice', '-n', '10', str(binary),
                                'migo_real_signal_receiver_and_map_spawn_share_saved_residents',
@@ -62,10 +67,11 @@ def main():
     args.output.write_text(json.dumps(result, indent=2) + '\n')
     complete = any(line.startswith('MIGO_RESPONSE boundary ') for line in lines)
     reload_observed = any(line.startswith('MIGO_RESPONSE world_reload ') for line in lines)
+    reload_complete = not args.world_reload or reload_observed
     print(json.dumps({'exit': proc.returncode, 'observations': len(lines), 'boundary': complete,
-                      'world_reload': reload_observed, 'world_reload_required': False,
+                      'world_reload': reload_observed, 'world_reload_required': args.world_reload,
                       'output': str(args.output)}))
-    return 0 if proc.returncode == 0 and complete and result['binary_unchanged'] and result['data_unchanged'] else 1
+    return 0 if proc.returncode == 0 and complete and reload_complete and result['binary_unchanged'] and result['data_unchanged'] else 1
 
 
 if __name__ == '__main__':

@@ -492,6 +492,7 @@ TEST_CASE( "migo_real_signal_receiver_and_map_spawn_share_saved_residents",
         }
         const bool visible_continuation = std::getenv( "CAOL_MIGO_RESPONSE_VISIBLE" ) != nullptr;
         const bool recloak = std::getenv( "CAOL_MIGO_RESPONSE_RECLOAK" ) != nullptr;
+        const bool world_reload = std::getenv( "CAOL_MIGO_RESPONSE_WORLD_RELOAD" ) != nullptr;
         const auto generation = tower->operation->generation;
         const auto observer = tower->signal->observer_member;
         std::vector<std::string> selected;
@@ -664,6 +665,7 @@ TEST_CASE( "migo_real_signal_receiver_and_map_spawn_share_saved_residents",
         };
         snapshot( 0 );
         int last_step = 0;
+        bool reloaded_return = false;
         const int step_limit = visible_continuation ? 1500 : 300;
         for( int step = 1; step <= step_limit; ++step ) {
             if( step == 181 ) {
@@ -704,6 +706,102 @@ TEST_CASE( "migo_real_signal_receiver_and_map_spawn_share_saved_residents",
             snapshot( step );
             last_step = step;
             const auto *current = overmap_buffer.global_state.migo_towers.find( geometry->id );
+            if( world_reload && !reloaded_return && current && current->operation &&
+                !current->operation->resolved &&
+                std::any_of( current->operation->members.begin(), current->operation->members.end(),
+            []( const auto &member ) { return member.settled; } ) &&
+                std::any_of( current->operation->members.begin(), current->operation->members.end(),
+            []( const auto &member ) { return !member.settled; } ) && step >= 725 ) {
+                struct saved_resident {
+                    tripoint_abs_ms position;
+                    int hp;
+                    migo_population::representation owner;
+                    std::uint64_t epoch;
+                    migo_tower::member_phase phase;
+                    std::string intent;
+                };
+                const auto capture = [&]() {
+                    std::map<std::string, saved_resident> out;
+                    auto *roster = population();
+                    REQUIRE( roster );
+                    for( const std::string &id : selected ) {
+                        const auto *member = roster->find( id );
+                        REQUIRE( member );
+                        monster *body = nullptr;
+                        for( monster &local : g->all_monsters() ) {
+                            if( local.population_identity().site_id == geometry->id &&
+                                local.population_identity().member_id == id ) {
+                                REQUIRE_FALSE( body );
+                                body = &local;
+                            }
+                        }
+                        for( const auto &entry : overmap_buffer.get( project_to<coords::om>( anchor ).xy() ).horde_entities() ) {
+                            if( entry.second->monster_data &&
+                                entry.second->monster_data->population_identity().site_id == geometry->id &&
+                                entry.second->monster_data->population_identity().member_id == id ) {
+                                REQUIRE_FALSE( body );
+                                body = entry.second->monster_data.get();
+                            }
+                        }
+                        REQUIRE( body );
+                        REQUIRE( roster->owns( body->population_identity(), member->owner ) );
+                        REQUIRE( body->migo_intent() );
+                        REQUIRE( body->migo_intent()->generation == generation );
+                        std::ostringstream intent;
+                        {
+                            JsonOut json( intent );
+                            body->migo_intent()->serialize( json );
+                        }
+                        out.emplace( id, saved_resident{ body->pos_abs(), body->get_hp(), member->owner,
+                                                       member->token.epoch, body->migo_intent()->phase,
+                                                       intent.str() } );
+                    }
+                    return out;
+                };
+                const auto before = capture();
+                REQUIRE( std::any_of( before.begin(), before.end(), []( const auto &entry ) {
+                    return entry.second.phase == migo_tower::member_phase::returning;
+                } ) );
+                std::ostringstream operation_before;
+                {
+                    JsonOut json( operation_before );
+                    current->operation->serialize( json );
+                }
+                const auto world_name = world_generator->active_world->world_name;
+                REQUIRE( g->save() );
+                REQUIRE( turn_handler::cleanup_at_end() );
+                world_generator->set_active_world( nullptr );
+                REQUIRE( g->load( world_name ) );
+                const auto after = capture();
+                REQUIRE( before.size() == selected.size() );
+                REQUIRE( after.size() == before.size() );
+                for( const std::string &id : selected ) {
+                    INFO( "resident=" << id );
+                    CHECK( after.at( id ).position == before.at( id ).position );
+                    CHECK( after.at( id ).hp == before.at( id ).hp );
+                    CHECK( after.at( id ).owner == before.at( id ).owner );
+                    CHECK( after.at( id ).epoch == before.at( id ).epoch );
+                    CHECK( after.at( id ).intent == before.at( id ).intent );
+                    std::cout << "MIGO_RESPONSE reload_member id=" << id << " position=" << after.at( id ).position
+                              << " hp=" << after.at( id ).hp << " owner=" << static_cast<int>( after.at( id ).owner )
+                              << " epoch=" << after.at( id ).epoch << " phase=" << static_cast<int>( after.at( id ).phase )
+                              << " intent_equal=" << ( after.at( id ).intent == before.at( id ).intent ) << std::endl;
+                }
+                current = overmap_buffer.global_state.migo_towers.find( geometry->id );
+                REQUIRE( current );
+                REQUIRE( current->operation );
+                CHECK_FALSE( current->operation->resolved );
+                CHECK( current->operation->generation == generation );
+                std::ostringstream operation_after;
+                {
+                    JsonOut json( operation_after );
+                    current->operation->serialize( json );
+                }
+                CHECK( operation_after.str() == operation_before.str() );
+                reloaded_return = true;
+                std::cout << "MIGO_RESPONSE world_reload step=" << step << " residents=" << after.size()
+                          << " generation=" << generation << std::endl;
+            }
             if( visible_continuation && ( get_avatar().is_dead_state() ||
                 ( current && current->operation && current->operation->resolved ) ) ) {
                 break;
@@ -718,6 +816,40 @@ TEST_CASE( "migo_real_signal_receiver_and_map_spawn_share_saved_residents",
         }
         const auto *final = overmap_buffer.global_state.migo_towers.find( geometry->id );
         REQUIRE( final );
+        if( world_reload ) {
+            REQUIRE( reloaded_return );
+            REQUIRE( final->operation );
+            REQUIRE( final->operation->resolved );
+            CHECK( final->operation->generation == generation );
+            CHECK( std::all_of( final->operation->members.begin(), final->operation->members.end(),
+            []( const auto &member ) { return member.settled && member.returned; } ) );
+            std::ostringstream before;
+            std::ostringstream population_before;
+            {
+                JsonOut json( before );
+                final->serialize( json );
+            }
+            {
+                JsonOut json( population_before );
+                overmap_buffer.global_state.migo_populations.serialize( json );
+            }
+            migo_tower::service_operations( to_turn<int>( calendar::turn ), 1 );
+            migo_tower::service_operations( to_turn<int>( calendar::turn ), 1 );
+            final = overmap_buffer.global_state.migo_towers.find( geometry->id );
+            REQUIRE( final );
+            std::ostringstream after;
+            std::ostringstream population_after;
+            {
+                JsonOut json( after );
+                final->serialize( json );
+            }
+            {
+                JsonOut json( population_after );
+                overmap_buffer.global_state.migo_populations.serialize( json );
+            }
+            CHECK( after.str() == before.str() );
+            CHECK( population_after.str() == population_before.str() );
+        }
         std::cout << "MIGO_RESPONSE boundary step=" << last_step << " avatar_dead=" << get_avatar().is_dead_state()
                   << " operation=" << ( final->operation.has_value() )
                   << " resolved=" << ( final->operation && final->operation->resolved )
