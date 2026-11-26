@@ -484,6 +484,246 @@ TEST_CASE( "migo_real_signal_receiver_and_map_spawn_share_saved_residents",
     }
     CHECK( leased == 3 );
     CHECK( defenders == 5 );
+    if( std::getenv( "CAOL_MIGO_RESPONSE_PILOT" ) ) {
+        // Fixed fresh-map fixture. Only this branch follows the actual
+        // smoke-selected reservation; no body or route is moved by setup.
+        if( load_first ) {
+            return;
+        }
+        const bool visible_continuation = std::getenv( "CAOL_MIGO_RESPONSE_VISIBLE" ) != nullptr;
+        const bool recloak = std::getenv( "CAOL_MIGO_RESPONSE_RECLOAK" ) != nullptr;
+        const auto generation = tower->operation->generation;
+        const auto observer = tower->signal->observer_member;
+        std::vector<std::string> selected;
+        for( const auto &participant : tower->operation->members ) {
+            selected.push_back( participant.member_id );
+        }
+        if( visible_continuation && std::getenv( "CAOL_MIGO_RESPONSE_SAMPLE_PARTY" ) ) {
+            REQUIRE( selected.size() == 3 );
+            REQUIRE( std::set<std::string>( selected.begin(), selected.end() ).size() == selected.size() );
+            for( const std::string &id : selected ) {
+                REQUIRE( population()->find( id ) != nullptr );
+                std::cout << "MIGO_RESPONSE selected id=" << id << std::endl;
+            }
+        } else if( visible_continuation ) {
+            const std::set<std::string> expected = {
+                "CsabqYpgQVFVOuBwkpAzCkkeQKiloYSJ", "HjvOKuWbujYfxGxVOoxKydmzIYcYlmGk",
+                "ljcOVmhKVkTbaETEMWlXUAQOhAyewzsk"
+            };
+            REQUIRE( std::set<std::string>( selected.begin(), selected.end() ) == expected );
+            std::cout << "MIGO_RESPONSE replay matched_original_party=1" << std::endl;
+        }
+        std::cout << "MIGO_RESPONSE receipt site=" << geometry->id << " anchor=" << anchor
+                  << " source=" << source << " observer=" << observer
+                  << " observed=" << tower->signal->observed_turn
+                  << " generation=" << generation << " party=" << selected.size() << std::endl;
+        std::map<std::string, tripoint_abs_ms> positions;
+        std::map<std::string, int> moved;
+        std::map<std::string, int> stationary;
+        std::map<std::string, int> active_updates;
+        std::map<std::string, int> reversals;
+        std::map<std::string, std::vector<tripoint_abs_ms>> recent;
+        int previous_cursor = -1;
+        std::map<std::string, int> previous_phase;
+        std::map<std::string, int> previous_hp;
+        std::map<std::string, int> previous_combat;
+        std::map<std::string, bool> previous_sight;
+        std::set<std::string> terminal_logged;
+        const auto snapshot = [&]( int step ) {
+            auto *current = overmap_buffer.global_state.migo_towers.find( geometry->id );
+            auto *roster = population();
+            REQUIRE( current );
+            REQUIRE( roster );
+            if( current->operation ) {
+                const auto &sweep = current->operation->sweep;
+                if( sweep.cursor != previous_cursor || step == 180 || step == 181 || step == 300 ) {
+                    std::cout << "MIGO_RESPONSE sweep step=" << step << " cursor=" << sweep.cursor
+                              << " pending=" << ( sweep.pending() ? sweep.pending()->to_string() : "none" )
+                              << " active_elapsed=" << sweep.active_elapsed
+                              << " retry_after=" << sweep.retry_after_active << std::endl;
+                    previous_cursor = sweep.cursor;
+                }
+            }
+            for( const std::string &id : selected ) {
+                const auto *member = roster->find( id );
+                REQUIRE( member );
+                monster *body = nullptr;
+                horde_entity *horde = nullptr;
+                for( monster &local : g->all_monsters() ) {
+                    if( local.population_identity().site_id == geometry->id &&
+                        local.population_identity().member_id == id ) {
+                        body = &local;
+                    }
+                }
+                for( const auto &entry : overmap_buffer.get( project_to<coords::om>( anchor ).xy() ).horde_entities() ) {
+                    if( entry.second->monster_data &&
+                        entry.second->monster_data->population_identity().site_id == geometry->id &&
+                        entry.second->monster_data->population_identity().member_id == id ) {
+                        REQUIRE_FALSE( body );
+                        body = entry.second->monster_data.get();
+                        horde = entry.second;
+                    }
+                }
+                if( !body && member->owner == migo_population::representation::dead ) {
+                    if( terminal_logged.insert( id ).second ) {
+                        std::cout << "MIGO_RESPONSE terminal step=" << step << " id=" << id
+                                  << " owner=dead epoch=" << member->token.epoch << std::endl;
+                    }
+                    continue;
+                }
+                REQUIRE( body );
+                REQUIRE( roster->owns( body->population_identity(), member->owner ) );
+                REQUIRE( body->migo_intent() );
+                REQUIRE( body->migo_intent()->generation == generation );
+                const auto pos = body->pos_abs();
+                const auto previous = positions.find( id );
+                const bool changed = previous != positions.end() && previous->second != pos;
+                if( step && current->operation && current->operation->activity.active ) {
+                    ++active_updates[id];
+                    stationary[id] = changed ? 0 : stationary[id] + 1;
+                }
+                if( changed ) {
+                    ++moved[id];
+                    if( recent[id].size() >= 2 && recent[id][recent[id].size() - 2] == pos ) {
+                        ++reversals[id];
+                    }
+                }
+                if( previous == positions.end() || changed ) {
+                    recent[id].push_back( pos );
+                    if( recent[id].size() > 12 ) {
+                        recent[id].erase( recent[id].begin() );
+                    }
+                }
+                const auto &intent_read = *body->migo_intent();
+                const int current_phase = static_cast<int>( intent_read.phase );
+                const bool sees_avatar = visible_continuation && step >= 301 &&
+                                         member->owner == migo_population::representation::local &&
+                                         body->sees_without_clairvoyance_physical( here, get_avatar() );
+                const bool state_changed = previous_phase.count( id ) &&
+                                           ( previous_phase[id] != current_phase || previous_hp[id] != body->get_hp() ||
+                                             previous_combat[id] != intent_read.last_combat_world ||
+                                             previous_sight[id] != sees_avatar );
+                if( step == 0 || step == 180 || ( step >= 181 && step <= 185 ) || step == 300 ||
+                    ( visible_continuation && ( state_changed || step % 100 == 0 ) ) ||
+                    ( changed && moved[id] <= 12 ) ||
+                    ( changed && moved[id] % 20 == 0 ) ) {
+                    const auto &intent = *body->migo_intent();
+                    const Creature *occupant = intent.waypoint ?
+                                               get_creature_tracker().creature_at( *intent.waypoint, true ) : nullptr;
+                    const monster *occupant_monster = dynamic_cast<const monster *>( occupant );
+                    const std::string occupant_id = occupant == &get_avatar() ? "avatar" :
+                        occupant_monster && !occupant_monster->population_identity().empty() ?
+                        occupant_monster->population_identity().member_id : occupant ? "other" : "none";
+                    std::cout << "MIGO_RESPONSE member step=" << step << " id=" << id
+                              << " epoch=" << member->token.epoch << " owner=" << static_cast<int>( member->owner )
+                              << " position=" << pos << " target=" << source
+                              << " waypoint=" << ( intent.waypoint ? intent.waypoint->to_string() : "none" )
+                              << " waypoint_occupant=" << occupant_id
+                              << " phase=" << static_cast<int>( intent.phase )
+                              << " hp=" << body->get_hp() << " sees_avatar=" << sees_avatar
+                              << " morale=" << body->morale
+                              << " native_flee=" << ( body->attitude( &get_avatar() ) == MATT_FLEE )
+                              << " target_avatar=" << ( body->attack_target() == &get_avatar() )
+                              << " last_combat=" << intent.last_combat_world
+                              << " last_sighting=" << intent.last_observed_enemy_world
+                              << " speed=" << body->get_speed() << " moves=" << body->get_moves()
+                              << " paid=" << intent.coarse_work.work_millis
+                              << " edge=" << intent.coarse_work.edge_cost_millis
+                              << " active_cursor=" << intent.coarse_work.serviced_active_turns
+                              << " last_energy=" << intent.last_energy_world
+                              << " last_local_process=" << intent.last_native_process_world
+                              << " active_updates=" << active_updates[id] << " steps=" << moved[id]
+                              << " stationary=" << stationary[id]
+                              << " immediate_reversals=" << reversals[id] << std::endl;
+                }
+                if( visible_continuation && step == 1500 && horde &&
+                    current_phase == static_cast<int>( migo_tower::member_phase::returning ) ) {
+                    monster probe( *body );
+                    const auto coarse = migo_tower::prepare_coarse_step( probe, 1, horde->moves );
+                    const auto diagnostic = coarse.local_handoff ?
+                        migo_tower::prepare_step( probe, migo_population::representation::abstract,
+                                                  coarse.local_waypoint ) : coarse.step;
+                    std::cout << "MIGO_RESPONSE diagnostic step=" << step << " id=" << id
+                              << " home=" << intent_read.home << " position=" << pos
+                              << " operation_active=" << ( current->operation && current->operation->activity.active )
+                              << " horde_active=" << horde->is_active()
+                              << " horde_moves=" << horde->moves
+                              << " horde_last=" << to_turn<int>( horde->last_processed )
+                              << " assignment=" << static_cast<int>( member->assignment )
+                              << " local_handoff=" << coarse.local_handoff
+                              << " funded=" << coarse.funded << " next=" << static_cast<int>( diagnostic.next )
+                              << " known=" << diagnostic.known << " missing_geometry=" << diagnostic.missing_geometry.has_value()
+                              << " reason=" << diagnostic.reason << std::endl;
+                }
+                previous_phase[id] = current_phase;
+                previous_hp[id] = body->get_hp();
+                previous_combat[id] = intent_read.last_combat_world;
+                previous_sight[id] = sees_avatar;
+                positions[id] = pos;
+            }
+        };
+        snapshot( 0 );
+        int last_step = 0;
+        const int step_limit = visible_continuation ? 1500 : 300;
+        for( int step = 1; step <= step_limit; ++step ) {
+            if( step == 181 ) {
+                const auto original = get_avatar().pos_abs();
+                std::optional<tripoint_bub_ms> destination;
+                for( const auto &p : here.points_in_radius( here.get_bub( source ), 8, 0 ) ) {
+                    if( rl_dist( here.get_abs( p ), source ) >= 5 && here.passable( p ) &&
+                        !get_creature_tracker().creature_at( here.get_abs( p ), true ) ) {
+                        destination = p;
+                        break;
+                    }
+                }
+                REQUIRE( destination );
+                get_avatar().setpos( here, *destination, false );
+                std::cout << "MIGO_RESPONSE intervention step=" << step << " avatar_from=" << original
+                          << " avatar_to=" << get_avatar().pos_abs()
+                          << " source_unchanged=" << source << std::endl;
+            }
+            if( step == 301 && visible_continuation ) {
+                get_avatar().unset_mutation( trait_id( "DEBUG_CLOAK" ) );
+                here.invalidate_visibility_cache();
+                here.build_map_cache( get_avatar().posz() );
+                std::cout << "MIGO_RESPONSE intervention step=301 avatar_cloak=removed position="
+                          << get_avatar().pos_abs() << std::endl;
+            }
+            if( step == 311 && recloak ) {
+                get_avatar().set_mutation( trait_id( "DEBUG_CLOAK" ) );
+                here.invalidate_visibility_cache();
+                here.build_map_cache( get_avatar().posz() );
+                std::cout << "MIGO_RESPONSE intervention step=311 avatar_cloak=restored position="
+                          << get_avatar().pos_abs() << std::endl;
+            }
+            calendar::turn += 1_turns;
+            migo_tower::service_operations( to_turn<int>( calendar::turn ), 1 );
+            overmap_buffer.move_hordes();
+            migo_population::service_loaded();
+            process_monsters_and_npcs_turn_for_test();
+            snapshot( step );
+            last_step = step;
+            const auto *current = overmap_buffer.global_state.migo_towers.find( geometry->id );
+            if( visible_continuation && ( get_avatar().is_dead_state() ||
+                ( current && current->operation && current->operation->resolved ) ) ) {
+                break;
+            }
+        }
+        for( const std::string &id : selected ) {
+            std::cout << "MIGO_RESPONSE recent id=" << id << " positions=";
+            for( const auto &position : recent[id] ) {
+                std::cout << position << ";";
+            }
+            std::cout << std::endl;
+        }
+        const auto *final = overmap_buffer.global_state.migo_towers.find( geometry->id );
+        REQUIRE( final );
+        std::cout << "MIGO_RESPONSE boundary step=" << last_step << " avatar_dead=" << get_avatar().is_dead_state()
+                  << " operation=" << ( final->operation.has_value() )
+                  << " resolved=" << ( final->operation && final->operation->resolved )
+                  << " target=" << source << std::endl;
+        return;
+    }
     const auto first_observation = tower->last_sense_turn;
     run_live_light_delivery_for_test();
     if( !load_first ) {
