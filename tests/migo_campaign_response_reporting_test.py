@@ -1,5 +1,6 @@
 """Check optional reload reporting against actual native event lines."""
 import contextlib
+import hashlib
 import io
 import json
 import sys
@@ -72,6 +73,34 @@ class ReloadReporting(unittest.TestCase):
                     runner.main()
                 child.assert_not_called()
             self.assertFalse(output.exists())
+
+    def test_receipt_digest_matches_bytes_used_for_binding(self):
+        with tempfile.TemporaryDirectory() as directory:
+            receipt = Path(directory) / 'receipt.json'
+            record = {'schema': 'de67.worker-result-receipt.v1', 'disposition': 'completed',
+                      'bindings': {'binary_sha256': 'a' * 64, 'fixture_sha256': 'b' * 64}}
+            original = json.dumps(record).encode()
+            receipt.write_bytes(original)
+            output = Path(directory) / 'result.json'
+            argv = ['runner', '--binary', sys.executable, '--setup-seed', '0', '--game-seed', '1',
+                    '--output', str(output), '--build-receipt', str(receipt)]
+            read_bytes = Path.read_bytes
+            def replace_after_read(path):
+                value = read_bytes(path)
+                if path == receipt:
+                    receipt.write_text('{}')
+                return value
+            native = mock.Mock(returncode=0, stdout='MIGO_RESPONSE boundary step=1\n')
+            with mock.patch.object(sys, 'argv', argv), mock.patch.object(Path, 'read_bytes', replace_after_read), \
+                    mock.patch.object(runner, 'digest', return_value='a' * 64), \
+                    mock.patch.object(runner, 'data_digest', return_value='data'), \
+                    mock.patch.object(runner.subprocess, 'run', return_value=native), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(runner.main(), 0)
+            binding = json.loads(output.read_text())['binding']
+            self.assertEqual(binding['fixture_sha256'], 'b' * 64)
+            self.assertEqual(binding['build_receipt_sha256'], hashlib.sha256(original).hexdigest())
+            self.assertEqual(binding['native_source_scope'], 'working-checkout-only')
 
     def test_optional_reload_requires_native_event(self):
         for requested, observed, expected in ((False, False, 0), (True, False, 1), (True, True, 0)):

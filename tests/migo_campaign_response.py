@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run the real-smoke Mi-go response fixture as a fixed-setup seeded pilot."""
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -40,7 +41,8 @@ def main():
     receipt_sha256 = None
     if args.build_receipt:
         try:
-            receipt = json.loads(args.build_receipt.read_text())
+            receipt_bytes = args.build_receipt.read_bytes()
+            receipt = json.loads(receipt_bytes)
             if not isinstance(receipt, dict):
                 raise ValueError('expected a receipt object')
             bindings = receipt['bindings']
@@ -51,7 +53,7 @@ def main():
                 raise ValueError('invalid compiled fixture hash')
             if bindings['binary_sha256'] != binary_sha256:
                 raise ValueError('build receipt executable hash does not match binary')
-            receipt_sha256 = digest(args.build_receipt)
+            receipt_sha256 = hashlib.sha256(receipt_bytes).hexdigest()
         except (OSError, ValueError, KeyError, TypeError) as error:
             parser.error('invalid build receipt: ' + str(error))
     identity = {'binary_sha256': binary_sha256,
@@ -60,6 +62,7 @@ def main():
                 'fixture_binding': 'receipt-declared' if receipt_sha256 else 'working-source-only',
                 'build_receipt_sha256': receipt_sha256,
                 'native_sha256': digest(ROOT / 'src/migo_tower_native.cpp'),
+                'native_source_scope': 'working-checkout-only',
                 'runner_sha256': digest(Path(__file__)), 'data_sha256': data_digest(),
                 'setup_seed': args.setup_seed, 'game_seed': args.game_seed,
                 'setup': 'fixed fresh tower, real generated roster and daytime smoke, avatar cloaked',
