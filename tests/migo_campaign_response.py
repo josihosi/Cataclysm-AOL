@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -13,6 +14,7 @@ from overmap_ai_seed_campaign import ROOT, data_digest, digest
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--binary', type=Path, required=True)
+    parser.add_argument('--build-receipt', type=Path, help='completed worker receipt binding the executable and compiled fixture')
     parser.add_argument('--setup-seed', type=int, required=True)
     parser.add_argument('--game-seed', type=int, required=True)
     parser.add_argument('--output', type=Path, required=True)
@@ -33,8 +35,30 @@ def main():
     if args.output.exists():
         parser.error('refusing to overwrite a previous result')
     binary = args.binary.resolve(strict=True)
-    identity = {'binary_sha256': digest(binary),
-                'fixture_sha256': digest(ROOT / 'tests/migo_tower_test.cpp'),
+    binary_sha256 = digest(binary)
+    fixture_sha256 = None
+    receipt_sha256 = None
+    if args.build_receipt:
+        try:
+            receipt = json.loads(args.build_receipt.read_text())
+            if not isinstance(receipt, dict):
+                raise ValueError('expected a receipt object')
+            bindings = receipt['bindings']
+            if receipt.get('schema') != 'de67.worker-result-receipt.v1' or receipt.get('disposition') != 'completed':
+                raise ValueError('expected a completed worker receipt')
+            fixture_sha256 = bindings['fixture_sha256']
+            if not isinstance(fixture_sha256, str) or not re.fullmatch(r'[0-9a-f]{64}', fixture_sha256):
+                raise ValueError('invalid compiled fixture hash')
+            if bindings['binary_sha256'] != binary_sha256:
+                raise ValueError('build receipt executable hash does not match binary')
+            receipt_sha256 = digest(args.build_receipt)
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            parser.error('invalid build receipt: ' + str(error))
+    identity = {'binary_sha256': binary_sha256,
+                'fixture_sha256': fixture_sha256,
+                'working_fixture_sha256': digest(ROOT / 'tests/migo_tower_test.cpp'),
+                'fixture_binding': 'receipt-declared' if receipt_sha256 else 'working-source-only',
+                'build_receipt_sha256': receipt_sha256,
                 'native_sha256': digest(ROOT / 'src/migo_tower_native.cpp'),
                 'runner_sha256': digest(Path(__file__)), 'data_sha256': data_digest(),
                 'setup_seed': args.setup_seed, 'game_seed': args.game_seed,
