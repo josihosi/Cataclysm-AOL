@@ -429,7 +429,7 @@ def run(directory, limit=None):
                 outcome = 'native_failure' if proc.returncode else ('invariant_failure' if failure else 'pass')
                 reached = outcome == 'pass'
                 a['result'] = {'exit': proc.returncode, 'outcome': outcome, 'observation': observed,
-                               'first_failure': failure if not proc.returncode else None,
+                               'first_failure': failure,
                                'events': [{'transition': event['transition'], 'reached': reached, 'fired': reached}
                                           for event in a['recipe']['events']]}
                 a['status'] = 'completed'

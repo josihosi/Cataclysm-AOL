@@ -64,6 +64,24 @@ class BroodCampaign(unittest.TestCase):
         self.assertTrue(all(not event['reached'] for event in result['events']))
         self.assertEqual(state['attempts'][1]['status'], 'pending')
 
+    def test_native_failure_retains_earliest_clock_discrepancy(self):
+        # The native process failed after reporting its first usable clock mismatch.
+        text = ('MIGO_CLOCK phase=loaded step=1 world=86403 elapsed=1 delta=1\n'
+                'MIGO_CLOCK phase=active_unloaded step=1 world=86404 elapsed=1 delta=1\n'
+                'MIGO_CLOCK phase=active_unloaded step=2 world=86405 elapsed=1 delta=1')
+        with mock.patch.object(campaign.subprocess, 'run',
+                               return_value=mock.Mock(returncode=4, stdout=text)) as child:
+            campaign.run(self.directory)
+        state = self.state()
+        result = state['attempts'][0]['result']
+        self.assertEqual((result['exit'], result['outcome']), (4, 'native_failure'))
+        self.assertEqual(result['first_failure']['world_turn'], 86404)
+        self.assertEqual(result['first_failure']['production_delta'], 0)
+        self.assertEqual(result['first_failure']['activity_delta'], 1)
+        self.assertTrue(all(not event['reached'] and not event['fired'] for event in result['events']))
+        self.assertEqual(state['attempts'][1]['status'], 'pending')
+        self.assertEqual(child.call_count, 1)
+
     def test_first_discrepancy_precedes_missing_later_marker(self):
         with self.run_child(output(reload=False, mismatch=True)):
             campaign.run(self.directory)
