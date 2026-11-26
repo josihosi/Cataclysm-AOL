@@ -55353,7 +55353,7 @@ TEST_CASE( "inactive generic scout keeps its existing ordinary homeward travel",
             REQUIRE_FALSE( route.local_boundary_refusals.empty() );
             const int retry_after = route.local_boundary_refusals.front().retry_after;
             const auto first_lookups = loads.lookup_calls;
-            REQUIRE( first_lookups > prior_lookups ); // Positive control: local geometry was read.
+            CHECK( first_lookups == prior_lookups ); // The loaded boundary needs no submap lookup.
             calendar::turn += 5_minutes;
             refresh_live_bandit_activation();
             process_overmap_npc_move_for_test();

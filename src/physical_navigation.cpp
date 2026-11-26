@@ -20,6 +20,7 @@
 #include "monster.h"
 #include "mtype.h"
 #include "npc.h"
+#include "omdata.h"
 #include "overmap.h"
 #include "overmapbuffer.h"
 #include "pathfinding.h"
@@ -68,8 +69,8 @@ struct view_bounds {
     }
 };
 
-// Borrow existing submaps only. Unknown cells and remote vehicle geometry are
-// walls, including physical parts overhanging from another resident submap.
+// Borrow existing geometry. Only a same-level ingress may estimate its
+// offscreen approach from the OMTs on the already selected travel edge.
 class navigation_view : public map
 {
         struct binding {
@@ -79,7 +80,9 @@ class navigation_view : public map
             int field_count;
         };
         submap unknown;
+        std::optional<submap> estimated_ground;
         std::set<tripoint_abs_sm> available;
+        std::set<tripoint_abs_sm> estimated;
         std::set<tripoint_abs_sm> missing;
         std::vector<binding> bindings;
         view_bounds bounds;
@@ -89,7 +92,9 @@ class navigation_view : public map
     public:
         navigation_view( const tripoint_abs_ms &from, const tripoint_abs_ms &to ) :
             navigation_view( view_bounds( from, to ) ) {}
-        explicit navigation_view( const view_bounds &window, bool retain_bindings = false ) :
+        explicit navigation_view( const view_bounds &window, bool retain_bindings = false,
+                                  const map *loaded = nullptr,
+                                  const std::set<tripoint_abs_omt> &approach = {} ) :
             map( window.size, true ),
             bounds( window ) {
             unknown.set_all_ter( ter_str_id( "t_wall" ) );
@@ -100,19 +105,33 @@ class navigation_view : public map
             }
             // Archive handles end before any route. The view's submaps remain
             // borrowed only through its caller's read-only preparation span.
-            mapbuffer::existing_submap_reader existing( MAPBUFFER );
+            std::optional<mapbuffer::existing_submap_reader> existing;
+            if( !loaded ) {
+                existing.emplace( MAPBUFFER );
+            }
             for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
                 for( int x = 0; x < getmapsize(); ++x ) {
                     for( int y = 0; y < getmapsize(); ++y ) {
                         const tripoint_abs_sm p( bounds.first.x() + x, bounds.first.y() + y, z );
                         const bool eligible = z >= bounds.low && z <= bounds.high;
-                        submap *sm = eligible ? existing.lookup( p ) : nullptr;
+                        submap *sm = eligible ? ( existing ? existing->lookup( p ) :
+                                                 MAPBUFFER.lookup_submap_cached( p ) ) : nullptr;
                         const bool usable = accepted( sm, p );
                         if( retain_bindings && eligible ) {
                             bindings.push_back( {p, sm, usable, sm ? sm->field_count : 0} );
                         }
                         if( usable ) {
                             available.insert( p );
+                        } else if( !sm && loaded &&
+                                   !loaded->inbounds( project_to<coords::ms>( p ) ) &&
+                                   approach.count( project_to<coords::omt>( p ) ) != 0 &&
+                                   MAPBUFFER.vehicle_parts_at( p ).empty() ) {
+                            if( !estimated_ground ) {
+                                estimated_ground.emplace();
+                                estimated_ground->set_all_ter( ter_str_id( "t_grass" ) );
+                            }
+                            sm = &*estimated_ground;
+                            estimated.insert( p );
                         } else {
                             if( eligible && !sm ) {
                                 missing.insert( p );
@@ -146,6 +165,9 @@ class navigation_view : public map
         }
         bool known( const tripoint_abs_ms &p ) const {
             return inbounds( p ) && available.count( project_to<coords::sm>( p ) ) != 0;
+        }
+        bool routable( const tripoint_abs_ms &p ) const {
+            return known( p ) || ( inbounds( p ) && estimated.count( project_to<coords::sm>( p ) ) != 0 );
         }
         bool unavailable( const tripoint_abs_ms &p ) const {
             return inbounds( p ) && missing.count( project_to<coords::sm>( p ) ) != 0;
@@ -220,21 +242,41 @@ npc_entry_result move_npc_into_loaded_area( npc &body, map &loaded,
     const tripoint_bub_ms relative = loaded.get_bub( origin );
     const tripoint_bub_ms nearest( std::clamp( relative.x(), 0, last ),
                                   std::clamp( relative.y(), 0, last ), relative.z() );
+    const auto params = overmap_path_params::for_npc();
+    std::set<tripoint_abs_omt> approach;
+    for( const auto &omt : { origin_omt, next_omt } ) {
+        const auto location = project_remain<coords::om>( omt );
+        const auto &om_position = location.quotient;
+        const auto &local = location.remainder_tripoint;
+        overmap *container = overmap_buffer.find_loaded_overmap( om_position );
+        if( !container ) {
+            continue;
+        }
+        const oter_id &terrain = container->ter( local );
+        if( terrain == oter_id() || !terrain.is_valid() ||
+            params.get_cost( terrain->get_travel_cost_type() ) < 0 ||
+            terrain->has_flag( oter_flags::known_up ) || terrain->has_flag( oter_flags::known_down ) ||
+            terrain->get_type_id().str().compare( 0, 6, "bridge" ) == 0 ) {
+            continue;
+        }
+        approach.insert( omt );
+    }
     view_bounds window( origin, loaded.get_abs( nearest ) );
     // A bounded local window permits a real detour around a nearby obstacle.
-    // All unknown geometry inside it remains a wall.
+    // The loaded boundary and resident remote obstacles use real geometry.
+    // The coarse approach never reads detailed map archives.
     const int grow = std::min( 4, MAPSIZE - window.size );
     window.first = tripoint_abs_sm( window.first.x() - grow / 2,
                                     window.first.y() - grow / 2, window.first.z() );
     window.size += grow;
-    navigation_view view( window );
-    if( !view.known( origin ) ) {
+    navigation_view view( window, false, &loaded, approach );
+    if( !view.routable( origin ) ) {
         return result;
     }
     std::set<tripoint_abs_ms> occupied;
     std::set<tripoint_abs_omt> local_omts;
     for( const tripoint_bub_ms &p : view.points_on_zlevel( origin.z() ) ) {
-        if( view.known( view.get_abs( p ) ) ) {
+        if( view.routable( view.get_abs( p ) ) ) {
             local_omts.insert( project_to<coords::omt>( view.get_abs( p ) ) );
         }
     }
@@ -297,7 +339,7 @@ npc_entry_result move_npc_into_loaded_area( npc &body, map &loaded,
     } );
     const auto native_avoid = body.get_path_avoid();
     const auto avoid = [&]( const tripoint_bub_ms &p ) {
-        if( !view.inbounds( p ) || p.z() != origin.z() || !view.known( view.get_abs( p ) ) ) {
+        if( !view.inbounds( p ) || p.z() != origin.z() || !view.routable( view.get_abs( p ) ) ) {
             return true;
         }
         const auto absolute = view.get_abs( p );

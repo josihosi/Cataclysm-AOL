@@ -31,8 +31,8 @@ struct npc_entry_result {
     bool moved = false;
     bool entered = false;
 };
-// Consume only the supplied local move budget along an existing native route.
-// Unknown geometry, hazards and occupied tiles remain unavailable.
+// Use the supplied move budget to enter real loaded geometry. The offscreen
+// approach can use OMT estimates for missing ordinary terrain.
 npc_entry_result move_npc_into_loaded_area( npc &body, map &loaded,
         const tripoint_abs_omt &next_omt, int funded_moves,
         const std::function<bool()> &still_owned );

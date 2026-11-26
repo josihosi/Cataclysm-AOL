@@ -206,3 +206,57 @@ TEST_CASE( "incoming native movement stops when ownership changes between tiles"
     CHECK( rl_dist( traveler.pos_abs(), outside ) == 1 );
     CHECK( checks >= 3 );
 }
+
+TEST_CASE( "incoming native movement estimates an unvisited ordinary approach",
+           "[overmap_party_travel][hostile_boundary]" )
+{
+    clear_map();
+    on_out_of_scope cleanup( []() { clear_npcs(); } );
+    map &here = get_map();
+    npc &traveler = spawn_npc( point_bub_ms( 60, 60 ), "test_talker" );
+    g->remove_npc( traveler.getID() );
+    const int last = here.getmapsize() * SEEX - 1;
+    const tripoint_bub_ms boundary( last, 48, traveler.posz() );
+    const auto entry = here.get_abs( boundary );
+    const auto origin = entry + point::east * ( 2 * SEEX + 1 );
+    const auto origin_omt = project_to<coords::omt>( origin );
+    const auto entry_omt = project_to<coords::omt>( entry );
+    REQUIRE( origin_omt == entry_omt + point::east );
+    const auto terrain = overmap_buffer.ter( origin_omt );
+    const auto entry_terrain = overmap_buffer.ter( entry_omt );
+    on_out_of_scope restore_terrain( [&]() {
+        overmap_buffer.ter_set( origin_omt, terrain );
+        overmap_buffer.ter_set( entry_omt, entry_terrain );
+    } );
+    for( int y = 0; y <= last; ++y ) {
+        here.ter_set( tripoint_bub_ms( last, y, traveler.posz() ), ter_str_id( "t_wall" ) );
+    }
+    traveler.travel_overmap( origin );
+    REQUIRE_FALSE( traveler.is_active() );
+    REQUIRE_FALSE( MAPBUFFER.lookup_submap_cached( project_to<coords::sm>( origin ) ) );
+    detailed_map_entry_counts maps;
+    submap_load_counts submaps;
+    scoped_detailed_map_entry_counter count_maps( maps );
+    scoped_submap_load_counter count_submaps( submaps );
+    const auto enter = [&]() {
+        return physical_navigation::move_npc_into_loaded_area( traveler, here, entry_omt,
+        20000, []() { return true; } );
+    };
+    overmap_buffer.ter_set( origin_omt, oter_str_id( "river_center" ) );
+    CHECK_FALSE( enter().acted );
+    CHECK( traveler.pos_abs() == origin );
+    overmap_buffer.ter_set( origin_omt, oter_str_id( "forest" ) );
+    overmap_buffer.ter_set( entry_omt, oter_str_id( "field" ) );
+    CHECK_FALSE( enter().acted );
+    CHECK( traveler.pos_abs() == origin );
+    here.ter_set( boundary, ter_str_id( "t_grass" ) );
+    const auto entered = enter();
+    CHECK( entered.moved );
+    CHECK( entered.entered );
+    CHECK( traveler.pos_abs() == entry );
+    CHECK( overmap_buffer.find_npc( traveler.getID() ).get() == &traveler );
+    CHECK_FALSE( MAPBUFFER.lookup_submap_cached( project_to<coords::sm>( origin ) ) );
+    CHECK( submaps.lookup_calls == 0 );
+    CHECK( submaps.deserialize_calls == 0 );
+    CHECK( maps.loads + maps.saves + maps.generations == 0 );
+}
