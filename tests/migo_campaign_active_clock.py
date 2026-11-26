@@ -27,6 +27,7 @@ def main():
     binary = args.binary.resolve(strict=True)
     source = ROOT / 'tests/migo_campaign_active_clock_test.cpp'
     binding = {'binary_sha256': digest(binary), 'source_sha256': digest(source),
+               'source_scope': 'working-checkout-only',
                'runner_sha256': digest(Path(__file__)), 'data_sha256': data_digest(),
                'setup_seed': args.setup_seed,
                'setup': 'fixed single pod and declared resident',
