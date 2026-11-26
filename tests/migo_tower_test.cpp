@@ -4949,6 +4949,7 @@ TEST_CASE( "migo_native_return_resolves_distant_floors_and_occupied_approaches",
 TEST_CASE( "migo_native_arrival_keeps_motor_owned_until_service_commits",
            "[migo_tower][home_rally_native][arrival_commit]" )
 {
+    const bool blocked = GENERATE( false, true );
     const auto old_turn = calendar::turn;
     const auto old_populations = overmap_buffer.global_state.migo_populations;
     const auto old_towers = overmap_buffer.global_state.migo_towers;
@@ -4970,6 +4971,11 @@ TEST_CASE( "migo_native_arrival_keeps_motor_owned_until_service_commits",
     get_avatar().set_mutation( trait_id( "DEBUG_CLOAK" ) );
     const tripoint_bub_ms lower( 50, 50, 0 );
     const tripoint_bub_ms upper( 50, 50, 1 );
+    for( int dx = -1; dx <= 1; ++dx ) {
+        for( int dy = -1; dy <= 1; ++dy ) {
+            here.ter_set( upper + point( dx, dy ), ter_str_id( "t_floor" ) );
+        }
+    }
     here.ter_set( lower, ter_str_id( "t_stairs_up" ) );
     here.ter_set( upper, ter_str_id( "t_stairs_down" ) );
     const auto home = here.get_abs( upper );
@@ -5009,11 +5015,20 @@ TEST_CASE( "migo_native_arrival_keeps_motor_owned_until_service_commits",
     process_monsters_and_npcs_turn_for_test();
     CHECK( body->pos_abs() == here.get_abs( lower ) );
     CHECK( body->get_moves() == 0 ); // First authenticated adoption grants no backlog.
+    if( blocked ) {
+        for( int dx = -1; dx <= 1; ++dx ) {
+            for( int dy = -1; dy <= 1; ++dy ) {
+                if( dx || dy ) {
+                    here.ter_set( upper + point( dx, dy ), ter_str_id( "t_wall" ) );
+                }
+            }
+        }
+    }
     calendar::turn += 1_turns;
     process_monsters_and_npcs_turn_for_test();
-    // Native120 credit pays the real100-cost stair. The remaining action
-    // opportunity must not surrender the return motor to ordinary idle work.
-    CHECK( body->pos_abs() == home );
+    // The motor may use the remaining native credit to clear the stair in
+    // this same action loop; a blocked landing must retain its owner.
+    CHECK( ( body->pos_abs() == home ) == blocked );
     CHECK( body->migo_intent()->last_energy_world == to_turn<int>( calendar::turn ) );
     CHECK( body->migo_intent()->phase == migo_tower::member_phase::returning );
     CHECK( migo_tower::owns_intent( *body, migo_population::representation::local ) );
@@ -5021,7 +5036,48 @@ TEST_CASE( "migo_native_arrival_keeps_motor_owned_until_service_commits",
     REQUIRE( current );
     CHECK( current->find( "returnee" )->assignment == migo_population::duty::returning );
     CHECK_FALSE( overmap_buffer.global_state.migo_towers.find( id )->operation->members[0].returned );
+    // A saved returning intent must retain the same identity and purpose.
+    std::ostringstream serialized;
+    { JsonOut json( serialized ); body->serialize( json ); }
+    monster reloaded;
+    reloaded.deserialize( json_loader::from_string( serialized.str() ) );
+    CHECK( reloaded.population_identity().member_id == member.token.member_id );
+    CHECK( reloaded.population_identity().epoch == member.token.epoch );
+    REQUIRE( reloaded.migo_intent() );
+    CHECK( reloaded.migo_intent()->phase == migo_tower::member_phase::returning );
+    CHECK( reloaded.migo_intent()->home == home );
+    if( blocked ) {
+        // A missing remote home submap cannot certify a safe arrival.
+        const tripoint_abs_ms unknown( 900000, 900000, 1 );
+        reloaded.set_pos_abs_only( unknown );
+        reloaded.migo_intent()->home = unknown;
+        const auto unavailable = migo_tower::prepare_step( reloaded,
+                                 migo_population::representation::local );
+        CHECK( unavailable.next == physical_navigation::action::none );
+        CHECK_FALSE( unavailable.known );
+        CHECK( unavailable.reason == "home_geometry_unknown" );
+    }
     migo_tower::service_operations( to_turn<int>( calendar::turn ), 1 );
+    if( blocked ) {
+        CHECK( current->find( "returnee" )->assignment == migo_population::duty::returning );
+        CHECK_FALSE( overmap_buffer.global_state.migo_towers.find( id )->operation->members[0].returned );
+        const auto denied = migo_tower::prepare_step( *body, migo_population::representation::local );
+        CHECK( denied.next == physical_navigation::action::none );
+        CHECK( denied.reason == "home_connection_blocked" );
+        CHECK( body->pos_abs() == home );
+        here.ter_set( upper, ter_str_id( "t_ramp_up_high" ) );
+        REQUIRE( here.has_flag( ter_furn_flag::TFLAG_RAMP_UP, upper ) );
+        migo_tower::service_operations( to_turn<int>( calendar::turn ) );
+        CHECK( current->find( "returnee" )->assignment == migo_population::duty::returning );
+        const auto ramp_denied = migo_tower::prepare_step( *body, migo_population::representation::local );
+        CHECK( ramp_denied.next == physical_navigation::action::none );
+        CHECK( ramp_denied.reason == "home_connection_blocked" );
+        CHECK( body->pos_abs() == home );
+        return;
+    }
+    CHECK( body->pos_abs() != home );
+    CHECK( project_to<coords::omt>( body->pos_abs() ) == anchor );
+    CHECK_FALSE( here.has_flag( ter_furn_flag::TFLAG_GOES_DOWN, here.get_bub( body->pos_abs() ) ) );
     CHECK( current->find( "returnee" )->assignment == migo_population::duty::available );
     CHECK( body->migo_intent()->phase == migo_tower::member_phase::settled );
     CHECK( overmap_buffer.global_state.migo_towers.find( id )->operation->members[0].returned );

@@ -28,6 +28,8 @@
 #include "migo_tower_ai.h"
 #include "migo_tower_capability.h"
 #include "map.h"
+#include "mapbuffer.h"
+#include "submap.h"
 #include "mattack_actors.h"
 #include "monster.h"
 #include "mtype.h"
@@ -253,6 +255,33 @@ static_assert( sizeof( observation_buffer ) + sizeof( receiver_observation ) +
                3 * sizeof( observation_entry ) < 65536,
                "Retained pools and simultaneous receiver record builders fit 64KiB" );
 constexpr int sensing_interval = 5 * 60;
+
+// Arrival on a vertical connection can strand other returning residents.
+// Read only existing geometry; an unknown square cannot prove safe arrival.
+std::optional<bool> vertical_connection( const tripoint_abs_ms &position )
+{
+    map &here = get_map();
+    if( here.inbounds( position ) ) {
+        const auto p = here.get_bub( position );
+        return here.has_flag( ter_furn_flag::TFLAG_GOES_UP, p ) ||
+               here.has_flag( ter_furn_flag::TFLAG_GOES_DOWN, p ) ||
+               here.has_flag( ter_furn_flag::TFLAG_RAMP_UP, p ) ||
+               here.has_flag( ter_furn_flag::TFLAG_RAMP_DOWN, p );
+    }
+    const auto sm_position = project_to<coords::sm>( position );
+    const submap *sm = MAPBUFFER.lookup_submap_existing( sm_position );
+    if( !sm ) {
+        return std::nullopt;
+    }
+    const point_sm_ms cell( position.x() - sm_position.x() * SEEX,
+                            position.y() - sm_position.y() * SEEY );
+    const auto has = [&]( ter_furn_flag flag ) {
+        return sm->get_ter( cell )->has_flag( flag ) || sm->get_furn( cell )->has_flag( flag );
+    };
+    return has( ter_furn_flag::TFLAG_GOES_UP ) || has( ter_furn_flag::TFLAG_GOES_DOWN ) ||
+           has( ter_furn_flag::TFLAG_RAMP_UP ) || has( ter_furn_flag::TFLAG_RAMP_DOWN );
+}
+
 physical_navigation::step_read read_owned_step( monster &body,
         const tripoint_abs_ms &goal, migo_population::representation owner,
         physical_navigation::preparation *prepared = nullptr, bool movement = false )
@@ -2011,6 +2040,47 @@ physical_navigation::step_read prepare_step( monster &body, migo_population::rep
     }
     if( intent.phase == member_phase::returning &&
         project_to<coords::omt>( body.pos_abs() ) == project_to<coords::omt>( intent.home ) ) {
+        const auto on_connection = vertical_connection( body.pos_abs() );
+        if( !on_connection ) {
+            result.reason = "home_geometry_unknown";
+            intent.waypoint = body.pos_abs();
+            return result;
+        }
+        if( *on_connection ) {
+            // Select only an adjacent, known nonportal in the same home OMT.
+            // The ordinary motor still pays for and commits the real step.
+            bool unknown = false;
+            for( int dx = -1; dx <= 1; ++dx ) {
+                for( int dy = -1; dy <= 1; ++dy ) {
+                    if( dx == 0 && dy == 0 ) {
+                        continue;
+                    }
+                    const auto candidate = body.pos_abs() + point( dx, dy );
+                    if( project_to<coords::omt>( candidate ) != project_to<coords::omt>( intent.home ) ) {
+                        continue;
+                    }
+                    const auto candidate_connection = vertical_connection( candidate );
+                    if( !candidate_connection ) {
+                        unknown = true;
+                        continue;
+                    }
+                    if( *candidate_connection ||
+                        get_creature_tracker().creature_at( candidate, true ) ) {
+                        continue;
+                    }
+                    const auto step = read_owned_step( body, candidate, owner, nullptr, true );
+                    if( step.next == physical_navigation::action::walk && step.position == candidate ) {
+                        intent.waypoint = candidate;
+                        return step;
+                    }
+                    unknown = unknown || !step.known;
+                }
+            }
+            intent.waypoint = body.pos_abs();
+            result.known = !unknown;
+            result.reason = unknown ? "home_geometry_unknown" : "home_connection_blocked";
+            return result;
+        }
         // Keep the return motor through the remaining native action loop.
         // Service commits arrival from the final physical pose; surrendering
         // intent here lets ordinary idle movement undo a prepared arrival.
@@ -2342,8 +2412,11 @@ void service_operations( int now_turn, int active_elapsed )
             auto &intent = *body.migo_intent();
             if( intent.phase == member_phase::returning || intent.phase == member_phase::settled ) {
                 population->returning( token );
-                if( population->returned( token, body.pos_abs() ) ) {
-                    world.refresh_site( site.site_id );
+                if( project_to<coords::omt>( body.pos_abs() ) == project_to<coords::omt>( intent.home ) ) {
+                    const auto on_connection = vertical_connection( body.pos_abs() );
+                    if( on_connection && !*on_connection && population->returned( token, body.pos_abs() ) ) {
+                        world.refresh_site( site.site_id );
+                    }
                 }
                 if( population->find( token.member_id )->assignment == migo_population::duty::available &&
                     project_to<coords::omt>( body.pos_abs() ) == project_to<coords::omt>( intent.home ) ) {
