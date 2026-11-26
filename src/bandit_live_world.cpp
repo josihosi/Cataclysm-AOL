@@ -3422,7 +3422,8 @@ snapshot.cohesion_reroutes_used > local_pair_reroute_cap ||
                                         snapshot.waypoint_index == 0 &&
                                         !outing.shared_route.empty() &&
                                         snapshot.route_position == outing.shared_route.front() &&
-                                        outing.selected_watch_kind != structural_watch_kind::none;
+                                        ( outing.selected_watch_kind != structural_watch_kind::none ||
+                                          bandit_live_world::structural_outing_is_physical_scavenge( outing ) );
     if( !abstract_homeward_pair && living_entry_positions.size() == 2 ) {
         if( !initial_home_departure &&
             rl_dist( living_entry_positions[0], living_entry_positions[1] ) >
@@ -5435,7 +5436,8 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
                                         outing.phase == scout_phase::outbound &&
                                         outing.waypoint_index == 0 &&
                                         outing.handoff_epoch == 0 &&
-                                        outing.selected_watch_kind != structural_watch_kind::none &&
+                                        ( outing.selected_watch_kind != structural_watch_kind::none ||
+                                          structural_outing_is_physical_scavenge( outing ) ) &&
                                         !outing.actor_departure_observed;
     if( entry_positions.size() == 2 &&
         ( ( !initial_home_departure &&
@@ -6909,20 +6911,39 @@ bool structural_outing_uses_frontier_route( const active_outing_state &outing )
     return false;
 }
 
-bool structural_frontier_arrival_order_is_current(
+bool structural_outing_is_physical_scavenge( const active_outing_state &outing )
+{
+    return outing.kind == outing_kind::structural_sortie && outing.schema_version >= 10 &&
+           outing.job_type == "scavenge";
+}
+
+bool structural_outing_travels_to_target( const active_outing_state &outing )
+{
+    return structural_outing_uses_frontier_route( outing ) ||
+           structural_outing_is_physical_scavenge( outing );
+}
+
+bool structural_direct_arrival_order_is_current(
     const site_record &site, const simulation_advance_cursor &expected_cursor,
     const int current_minutes )
 {
     const active_outing_state &outing = site.active_outing;
     const camp_map_lead *lead = site.intelligence_map.find_lead( outing.target_lead_id );
     const bool local = outing.owner == simulation_owner::local;
-    return structural_outing_uses_frontier_route( outing ) && !site.retired_empty_site &&
+    const bool scavenge = structural_outing_is_physical_scavenge( outing );
+    const bool local_departure = scavenge && local &&
+                                 ( local_pair_initial_departure_is_bound( outing ) ||
+                                   ( outing.phase == scout_phase::outbound &&
+                                     outing.local_handoff.has_intermediate_route_position() ) );
+    return structural_outing_travels_to_target( outing ) && !site.retired_empty_site &&
            !outing.local_projection_reconciliation_rejected && lead != nullptr &&
-           frontier_sector_from_lead( *lead ) && lead->revision == outing.target_lead_revision &&
-           lead->omt == outing.target_omt && frontier_memory_is_valid( site.intelligence_map ) &&
+           ( scavenge ? lead->kind == camp_lead_kind::structural_bounty :
+             frontier_sector_from_lead( *lead ).has_value() &&
+             frontier_memory_is_valid( site.intelligence_map ) ) &&
+           lead->revision == outing.target_lead_revision && lead->omt == outing.target_omt &&
            structural_route_is_canonical_for_outing( outing, site.anchor, *lead ) &&
            simulation_cursor_matches( outing, expected_cursor ) &&
-           outing.phase == scout_phase::observing && current_minutes >= 0 &&
+           ( outing.phase == scout_phase::observing || local_departure ) && current_minutes >= 0 &&
            current_minutes >= outing.last_advanced_minutes &&
            outing.member_ids.size() == 2 && outing.member_ids[0] != outing.member_ids[1] &&
            outing.casualty_ids.empty() && outing.resolved_member_ids.empty() &&
@@ -6945,13 +6966,18 @@ bool structural_watch_arrival_order_is_current(
            current_minutes >= outing.last_advanced_minutes;
 }
 
-local_handoff_commit_result complete_structural_frontier_arrival(
+local_handoff_commit_result complete_structural_direct_arrival(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     const int current_minutes, const std::vector<local_route_arrival_member_read> &member_reads )
 {
     const active_outing_state &outing = site.active_outing;
     const bool local = outing.owner == simulation_owner::local;
-    if( !structural_frontier_arrival_order_is_current( site, expected_cursor, current_minutes ) ||
+    const bool scavenge = structural_outing_is_physical_scavenge( outing );
+    const int destination = structural_outing_destination_waypoint( outing );
+    if( !structural_direct_arrival_order_is_current( site, expected_cursor, current_minutes ) ||
+        ( scavenge && ( destination < 1 ||
+                       ( outing.phase == scout_phase::observing && outing.waypoint_index == destination &&
+                         outing.actor_route_waypoint == destination ) ) ) ||
         member_reads.size() != 2 ) {
         return local_handoff_commit_result::rejected;
     }
@@ -6975,23 +7001,31 @@ local_handoff_commit_result complete_structural_frontier_arrival(
     }
     site_record candidate = site;
     auto &next = candidate.active_outing;
-    auto *sampled = candidate.intelligence_map.find_lead( next.target_lead_id );
-    sampled->status = camp_lead_status::scout_confirmed;
-    sampled->last_scouted_minutes = current_minutes;
-    sampled->last_checked_minutes = current_minutes;
-    sampled->last_outcome = "frontier_outer_sample_complete";
-    advance_camp_map_lead_revision( candidate, *sampled );
-    next.waypoint_index = structural_outing_destination_waypoint( next );
-    next.phase = scout_phase::returning_home;
+    next.waypoint_index = destination;
     next.last_progress_minutes = current_minutes;
     next.last_advanced_minutes = current_minutes;
-    next.assessment.exit_reason = "frontier outer route physically checked";
-    rebase_structural_route_clock_homeward( next, current_minutes );
-    next.expected_return_minutes = structural_expected_return_for_state( next, candidate );
-    next.missing_deadline_minutes = structural_missing_deadline_for_state( next );
+    if( scavenge ) {
+        next.phase = scout_phase::observing;
+        if( next.local_contact_minutes < 0 ) {
+            next.local_contact_minutes = current_minutes;
+        }
+        next.actor_departure_observed = true;
+    } else {
+        auto *sampled = candidate.intelligence_map.find_lead( next.target_lead_id );
+        sampled->status = camp_lead_status::scout_confirmed;
+        sampled->last_scouted_minutes = current_minutes;
+        sampled->last_checked_minutes = current_minutes;
+        sampled->last_outcome = "frontier_outer_sample_complete";
+        advance_camp_map_lead_revision( candidate, *sampled );
+        next.phase = scout_phase::returning_home;
+        next.assessment.exit_reason = "frontier outer route physically checked";
+        rebase_structural_route_clock_homeward( next, current_minutes );
+        next.expected_return_minutes = structural_expected_return_for_state( next, candidate );
+        next.missing_deadline_minutes = structural_missing_deadline_for_state( next );
+    }
     const bool retained_intermediate = !local && next.local_handoff.is_abstract_resume() &&
                                        next.local_handoff.has_intermediate_route_position();
-    if( !local ) {
+    if( !local || scavenge ) {
         next.actor_route_waypoint = next.waypoint_index;
     }
     if( local || retained_intermediate ) {
@@ -7036,11 +7070,22 @@ local_handoff_commit_result complete_structural_frontier_arrival(
     if( !simulation_owner_state_is_consistent( next ) || !candidate.roster().valid ) {
         return local_handoff_commit_result::rejected;
     }
+    const auto previous_phase = outing.phase;
     site = std::move( candidate );
-    record_scout_phase_transition_event( site.active_outing, scout_phase::observing,
-                                         scout_phase::returning_home,
+    record_scout_phase_transition_event( site.active_outing, previous_phase, site.active_outing.phase,
+                                         scavenge ? "scavenge pair physically reached issued source" :
                                          "frontier pair physically reached outer target", current_minutes );
     return local_handoff_commit_result::applied;
+}
+
+local_handoff_commit_result complete_structural_frontier_arrival(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const int current_minutes, const std::vector<local_route_arrival_member_read> &member_reads )
+{
+    if( !structural_outing_uses_frontier_route( site.active_outing ) ) {
+        return local_handoff_commit_result::rejected;
+    }
+    return complete_structural_direct_arrival( site, expected_cursor, current_minutes, member_reads );
 }
 
 local_handoff_commit_result commit_scout_pair_watch_arrival(
@@ -8041,13 +8086,17 @@ bool claim_local_pair_site_ownership( const site_record &site,
 
 bool local_pair_initial_departure_is_bound( const active_outing_state &outing )
 {
+    const bool physical_route = structural_outing_is_physical_scavenge( outing ) ?
+                                outing.shared_route.size() >= 3 :
+                                outing.selected_watch_kind != structural_watch_kind::none &&
+                                outing.shared_route.size() == 5;
     return outing.kind == outing_kind::structural_sortie && outing.schema_version >= 10 &&
            outing.owner == simulation_owner::local && outing.phase == scout_phase::outbound &&
-           outing.selected_watch_kind != structural_watch_kind::none &&
+           physical_route &&
            outing.waypoint_index == 0 && outing.actor_route_waypoint <= 0 &&
            !outing.actor_departure_observed && outing.member_ids.size() == 2 &&
            outing.casualty_ids.empty() && outing.resolved_member_ids.empty() &&
-           outing.shared_route.size() == 5 && outing.local_handoff.is_active() &&
+           outing.local_handoff.is_active() &&
            !outing.local_handoff.has_intermediate_route_position() &&
            outing.local_handoff.phase == outing.phase && outing.local_handoff.members.size() == 2 &&
            outing.local_handoff.waypoint_index == 0 &&
@@ -20107,7 +20156,9 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         }
     }
     candidate.active_outing.clear();
-    candidate.active_outing.schema_version = 9;
+    candidate.active_outing.schema_version =
+        plan.job == bandit_dry_run::job_template::scavenge &&
+        !plan.preflight_outbound_path.empty() ? 10 : 9;
     candidate.active_outing.kind = outing_kind::structural_sortie;
     candidate.active_outing.activity_id = plan.activity_id;
     candidate.active_outing.camp_id = candidate.site_id;
@@ -20190,10 +20241,16 @@ namespace
 {
 bool retained_structural_arrival_is_physical( const active_outing_state &outing )
 {
-    if( !outing.local_handoff.is_abstract_resume() ) {
-        return true; // Ordinary abstract simulation retains its established semantics.
-    }
+    const bool scavenge = structural_outing_is_physical_scavenge( outing );
     const int destination = structural_outing_destination_waypoint( outing );
+    if( scavenge && ( destination < 1 || outing.shared_route[destination] != outing.target_omt ||
+                     !outing.actor_departure_observed || outing.actor_route_waypoint != destination ) ) {
+        return false;
+    }
+    if( !outing.local_handoff.is_abstract_resume() &&
+        !( scavenge && outing.local_handoff.is_active() ) ) {
+        return true;
+    }
     return destination >= 0 && simulation_owner_state_is_consistent( outing ) &&
            outing.local_handoff.waypoint_index == destination &&
            outing.local_handoff.route_position == outing.target_omt &&
@@ -20215,11 +20272,17 @@ bool begin_structural_arrival_return( site_record &site, const sortie_cargo &car
     outing.waypoint_index = structural_outing_destination_waypoint( outing );
     outing.phase = scout_phase::returning_home;
     outing.last_progress_minutes = now_minutes;
-    if( outing.local_handoff.is_abstract_resume() ) {
+    if( outing.local_handoff.is_abstract_resume() || outing.local_handoff.is_active() ) {
         // Transfer purpose and cargo together, retaining actual poses, route,
         // casualty identities and the physical movement receipt.
         outing.local_handoff.phase = outing.phase;
         outing.local_handoff.cargo = outing.cargo;
+    }
+    if( structural_outing_is_physical_scavenge( outing ) ) {
+        outing.last_advanced_minutes = now_minutes;
+        rebase_structural_route_clock_homeward( outing, now_minutes );
+        outing.expected_return_minutes = structural_expected_return_for_state( outing, candidate );
+        outing.missing_deadline_minutes = structural_missing_deadline_for_state( outing );
     }
     if( !simulation_owner_state_is_consistent( outing ) || !candidate.roster().valid ) {
         return false;
@@ -21369,6 +21432,30 @@ structural_outing_result advance_structural_bounty_outings( world_state &state,
     bandit_live_world_probe::scoped_section probe_section(
         bandit_live_world_probe::section::structural_outings );
     structural_outing_result result;
+    const auto commit_resource_arrival = [&]( site_record &site, site_record candidate ) {
+        world_state transaction;
+        transaction.schema_version = state.schema_version;
+        const tripoint_abs_omt source = candidate.active_outing.target_omt;
+        transaction.sites.push_back( std::move( candidate ) );
+        if( const auto current = state.finite_resources.find( source );
+            current != state.finite_resources.end() ) {
+            transaction.finite_resources.emplace( current->first, current->second );
+        }
+        const auto receipt = apply_structural_resource_arrival( transaction, 0, now_minutes );
+        if( !receipt || ( projection_commit && !projection_commit( site, transaction.sites.front() ) ) ) {
+            return;
+        }
+        if( receipt->claimed_units > 0 ) {
+            state.finite_resources.insert_or_assign( source, transaction.finite_resources.at( source ) );
+        }
+        state.schema_version = transaction.schema_version;
+        site = std::move( transaction.sites.front() );
+        result.arrivals_processed++;
+        result.notes.push_back( "structural outing claimed " +
+                                std::to_string( receipt->claimed_units ) +
+                                " finite bounty units and left " +
+                                std::to_string( receipt->remaining_units ) );
+    };
     const auto confirmed_dead_party = []( const site_record & site ) {
         const auto &outing = site.active_outing;
         return !outing.member_ids.empty() &&
@@ -21472,6 +21559,13 @@ structural_outing_result advance_structural_bounty_outings( world_state &state,
             current_external_simulation_cursor( candidate );
         if( !expected_cursor ) {
             trace_structural_outing( candidate, "cursor", "valid=0" );
+            continue;
+        }
+        if( expected_cursor->owner == simulation_owner::local &&
+            structural_outing_is_physical_scavenge( candidate.active_outing ) &&
+            candidate.active_outing.phase == scout_phase::observing &&
+            retained_structural_arrival_is_physical( candidate.active_outing ) ) {
+            commit_resource_arrival( site, std::move( candidate ) );
             continue;
         }
         bool report_reduced = false;
@@ -21610,7 +21704,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state,
             continue;
         }
         if( pre_advance_outing.owner == simulation_owner::abstract &&
-            pre_advance_outing.actor_route_waypoint >= 0 ) {
+            ( pre_advance_outing.actor_route_waypoint >= 0 ||
+              structural_outing_is_physical_scavenge( pre_advance_outing ) ) ) {
             // The production travel owner supplies reached waypoints from the
             // same NPC IDs.  A clock cannot move their observation origin.
             const int required_waypoint = pre_advance_outing.phase == scout_phase::outbound ? 1 :
@@ -22196,7 +22291,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state,
         }
 
         if( outing.phase == scout_phase::observing && outing.local_contact_minutes >= 0 &&
-            elapsed >= active_structural_outing_arrival_delay_minutes( candidate ) ) {
+            ( structural_outing_is_physical_scavenge( outing ) ||
+              elapsed >= active_structural_outing_arrival_delay_minutes( candidate ) ) ) {
             const std::string lead_id = lead->lead_id;
             const bool returned_signal_arrival = returned_structural_signal_lead( *lead );
             if( structural_outing_uses_watch_route( outing ) ) {
@@ -22250,39 +22346,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state,
                     lead->last_outcome = "signal_investigation_empty";
                 }
             } else {
-                world_state transaction;
-                transaction.schema_version = state.schema_version;
-                transaction.sites.push_back( std::move( candidate ) );
-                const auto current_resource = state.finite_resources.find(
-                                                  transaction.sites.front().active_outing.target_omt );
-                if( current_resource != state.finite_resources.end() ) {
-                    transaction.finite_resources.emplace( current_resource->first,
-                                                          current_resource->second );
-                }
-                const std::optional<structural_resource_arrival_receipt> receipt =
-                    apply_structural_resource_arrival( transaction, 0, now_minutes );
-                if( !receipt ) {
-                    continue;
-                }
-                if( projection_commit && !projection_commit( site, transaction.sites.front() ) ) {
-                    continue;
-                }
-                if( receipt->claimed_units > 0 ) {
-                    const auto updated_resource = transaction.finite_resources.find(
-                                                      transaction.sites.front().active_outing.target_omt );
-                    if( updated_resource == transaction.finite_resources.end() ) {
-                        continue;
-                    }
-                    state.finite_resources.insert_or_assign( updated_resource->first,
-                            updated_resource->second );
-                }
-                state.schema_version = transaction.schema_version;
-                site = std::move( transaction.sites.front() );
-                result.arrivals_processed++;
-                result.notes.push_back( "structural outing claimed " +
-                                        std::to_string( receipt->claimed_units ) +
-                                        " finite bounty units and left " +
-                                        std::to_string( receipt->remaining_units ) );
+                commit_resource_arrival( site, std::move( candidate ) );
                 continue;
             }
             advance_camp_map_lead_revision( candidate, *lead );
@@ -25356,7 +25420,7 @@ std::optional<int> target_footprint_watch_distance(
 std::optional<int> covert_scout_travel_minimum_target_distance(
     const active_outing_state &outing )
 {
-    if( structural_outing_uses_frontier_route( outing ) ) {
+    if( structural_outing_travels_to_target( outing ) ) {
         return 0;
     }
     const std::optional<int> watch_distance = target_footprint_watch_distance(

@@ -2363,12 +2363,17 @@ std::optional<int> release_structural_outing_reservation( site_record &site,
 int structural_outing_party_power( const site_record &site );
 // Terrain exploration visits its outer target directly; it has no surveillance ring.
 bool structural_outing_uses_frontier_route( const active_outing_state &outing );
+bool structural_outing_is_physical_scavenge( const active_outing_state &outing );
+bool structural_outing_travels_to_target( const active_outing_state &outing );
 // Validate the owning route/cursor before either native order retention or pair arrival.
-bool structural_frontier_arrival_order_is_current(
+bool structural_direct_arrival_order_is_current(
     const site_record &site, const simulation_advance_cursor &expected_cursor, int current_minutes );
 // Read-only provenance for an unconsumed signal watch, including its current lead.
 bool structural_watch_arrival_order_is_current(
     const site_record &site, const simulation_advance_cursor &expected_cursor, int current_minutes );
+local_handoff_commit_result complete_structural_direct_arrival(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    int current_minutes, const std::vector<local_route_arrival_member_read> &member_reads );
 local_handoff_commit_result complete_structural_frontier_arrival(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     int current_minutes, const std::vector<local_route_arrival_member_read> &member_reads );

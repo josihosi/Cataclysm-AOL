@@ -2198,7 +2198,7 @@ int live_bandit_scout_destination_index( const bandit_live_world::active_outing_
            ( outing.actor_route_waypoint < 2 || outing.actor_route_waypoint >= home_index - 1 ?
              home_index : home_index - 1 ) :
            outing.phase == bandit_live_world::scout_phase::outbound ? 1 :
-           bandit_live_world::structural_outing_uses_frontier_route( outing ) ? home_index - 1 : 2;
+           bandit_live_world::structural_outing_travels_to_target( outing ) ? home_index - 1 : 2;
 }
 bool live_bandit_route_local_rendezvous(
     npc &member, const bandit_live_world::site_record &site,
@@ -11015,24 +11015,26 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
             std::vector<tripoint_abs_omt> omt_path;
         };
         std::vector<homeward_route_backup> homeward_backups;
-        const auto selected_watch_waypoint = std::find(
+        const auto forward_destination = bandit_live_world::structural_outing_is_physical_scavenge(
+                                             site.active_outing ) ? site.active_outing.target_omt :
+                                         site.active_outing.selected_watch_omt;
+        const auto forward_waypoint = std::find(
                 site.active_outing.shared_route.begin(), site.active_outing.shared_route.end(),
-                site.active_outing.selected_watch_omt );
+                forward_destination );
         const bool forward_route_release =
             plan.snapshot.cohesion_assembled &&
             ( plan.snapshot.phase == bandit_live_world::scout_phase::observing ||
               bandit_live_world::local_pair_initial_departure_is_bound( site.active_outing ) ) &&
             site.active_outing.schema_version >= 10 &&
             site.active_outing.waypoint_index >= 0 &&
-            selected_watch_waypoint != site.active_outing.shared_route.end() &&
-            std::distance( site.active_outing.shared_route.begin(), selected_watch_waypoint ) >
+            forward_waypoint != site.active_outing.shared_route.end() &&
+            std::distance( site.active_outing.shared_route.begin(), forward_waypoint ) >
             site.active_outing.waypoint_index &&
             plan.snapshot.waypoint_index == site.active_outing.waypoint_index &&
             plan.snapshot.route_position == site.active_outing.shared_route[
          static_cast<std::size_t>( site.active_outing.waypoint_index )] &&
             plan.snapshot.egress_omt == site.active_outing.shared_route[
-         static_cast<std::size_t>( site.active_outing.waypoint_index + 1 )] &&
-            *selected_watch_waypoint == site.active_outing.selected_watch_omt;
+         static_cast<std::size_t>( site.active_outing.waypoint_index + 1 )];
         if( forward_route_release ) {
             bandit_live_world::site_record route_site = site;
             route_site.active_outing.local_handoff = plan.snapshot;
@@ -11052,15 +11054,14 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
                     break;
                 }
                 if( member->is_travelling() &&
-                    member->goal == site.active_outing.selected_watch_omt &&
+                    member->goal == forward_destination &&
                     !member->omt_path.empty() ) {
                     continue;
                 }
                 homeward_backups.push_back( { member, member->mission,
                                               member->previous_mission, member->goal,
                                               member->omt_path } );
-                if( !live_bandit_route_member_to( *member, route_site,
-                                                  site.active_outing.selected_watch_omt ) ) {
+                if( !live_bandit_route_member_to( *member, route_site, forward_destination ) ) {
                     route_preparation_failed = true;
                     break;
                 }
@@ -11410,11 +11411,12 @@ bool complete_loaded_live_bandit_route_arrivals()
         // commit_scout_pair_watch_arrival validates that both actors are physically at the
         // selected watch.  A direct egress to that watch is therefore an admission case.
         const bool frontier = bandit_live_world::structural_outing_uses_frontier_route( outing );
+        const bool direct = bandit_live_world::structural_outing_travels_to_target( outing );
         const bool initial_departure = bandit_live_world::local_pair_initial_departure_is_bound( outing );
         const bool intermediate_outbound = !frontier &&
                                            outing.phase == bandit_live_world::scout_phase::outbound &&
                                            outing.local_handoff.has_intermediate_route_position();
-        const tripoint_abs_omt destination = frontier ? outing.target_omt : outing.selected_watch_omt;
+        const tripoint_abs_omt destination = direct ? outing.target_omt : outing.selected_watch_omt;
         if( ( outing.schema_version < 10 && !frontier ) ||
             outing.owner != bandit_live_world::simulation_owner::local ||
             ( outing.phase != bandit_live_world::scout_phase::observing && !initial_departure &&
@@ -11438,6 +11440,13 @@ bool complete_loaded_live_bandit_route_arrivals()
                 reads.clear();
                 break;
             }
+            if( direct && !frontier &&
+                ( !live_bandit_member_can_take_homeward_step( *member ) ||
+                  !live_bandit_abstract_scout_member_can_travel( *member ) ||
+                  ( member->current_target() && member->get_ai_danger() > 0 ) ) ) {
+                reads.clear();
+                break;
+            }
             any_loaded |= member->is_active() || here.inbounds( member->pos_abs() );
             bandit_live_world::local_route_arrival_member_read read;
             read.npc_id = member_id;
@@ -11449,9 +11458,9 @@ bool complete_loaded_live_bandit_route_arrivals()
             reads.push_back( read );
             members.push_back( member );
         }
-        if( ( !any_loaded && !frontier && !initial_departure ) || reads.size() != 2 ||
+        if( ( !any_loaded && !direct && !initial_departure ) || reads.size() != 2 ||
         commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
-        return frontier ? bandit_live_world::complete_structural_frontier_arrival(
+        return direct ? bandit_live_world::complete_structural_direct_arrival(
                    next, *cursor, live_bandit_current_minutes(), reads ) :
                    bandit_live_world::commit_scout_pair_watch_arrival( next, *cursor,
                            live_bandit_current_minutes(), reads );
@@ -12588,14 +12597,14 @@ bool pending_abstract_scout_arrival_order( const npc &member,
         live_bandit_current_minutes() < outing.last_advanced_minutes ) {
         return false;
     }
-    const bool frontier = bandit_live_world::structural_outing_uses_frontier_route( outing );
-    const tripoint_abs_omt destination = frontier ? outing.target_omt : outing.selected_watch_omt;
+    const bool direct = bandit_live_world::structural_outing_travels_to_target( outing );
+    const tripoint_abs_omt destination = direct ? outing.target_omt : outing.selected_watch_omt;
     if( member.pos_abs_omt() != destination ) {
         return false;
     }
-    if( frontier ) {
-        const int approach = static_cast<int>( outing.shared_route.size() ) - 3;
-        if( !bandit_live_world::structural_frontier_arrival_order_is_current(
+    if( direct ) {
+        const int approach = std::max( 1, static_cast<int>( outing.shared_route.size() ) - 3 );
+        if( !bandit_live_world::structural_direct_arrival_order_is_current(
                 *owner, *cursor, live_bandit_current_minutes() ) ||
             outing.waypoint_index != approach || outing.actor_route_waypoint != approach ) {
             return false;
@@ -12618,7 +12627,7 @@ bool pending_abstract_scout_arrival_order( const npc &member,
             return false;
         }
         const bool assigned = actor->is_travelling() && actor->goal == destination &&
-                              ( !frontier || ( actor->omt_path.empty() ? actor->pos_abs_omt() == destination :
+                              ( !direct || ( actor->omt_path.empty() ? actor->pos_abs_omt() == destination :
                                                actor->omt_path.front() == destination &&
                                                actor->omt_path.back() == actor->pos_abs_omt() ) );
         // reach_omt_destination leaves precisely this ordinary guard order.
@@ -12627,7 +12636,7 @@ bool pending_abstract_scout_arrival_order( const npc &member,
                                     actor->pos_abs_omt() == destination &&
                                     actor->goal == npc::no_goal_point && actor->omt_path.empty() &&
                                     actor->mission == NPC_MISSION_GUARD && actor->guard_pos == actor->pos_abs() &&
-                                    ( frontier || actor->previous_mission == NPC_MISSION_TRAVELLING );
+                                    ( direct || actor->previous_mission == NPC_MISSION_TRAVELLING );
         if( !assigned && !consumed_order ) {
             return false;
         }
@@ -12636,7 +12645,7 @@ bool pending_abstract_scout_arrival_order( const npc &member,
               actor->get_attitude() == NPCATT_FLEE || actor->get_attitude() == NPCATT_FLEE_TEMP ) ) {
             return false;
         }
-        if( recover_completed_order && !frontier &&
+        if( recover_completed_order && !direct &&
             ( !actor->activity.is_null() || actor->has_activity() ||
               actor->get_attitude() == NPCATT_KILL || actor->get_attitude() == NPCATT_MUG ) ) {
             return false;
@@ -12646,7 +12655,7 @@ bool pending_abstract_scout_arrival_order( const npc &member,
                 return false;
             }
         }
-        if( frontier || recover_completed_order ) {
+        if( direct || recover_completed_order ) {
             for( const auto &site : overmap_buffer.global_state.bandit_live_world.sites ) {
                 const auto contains = [id]( const auto & ids ) {
                     return std::find( ids.begin(), ids.end(), id ) != ids.end();
@@ -12749,8 +12758,8 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel(
             ( outing.schema_version < 10 &&
               !bandit_live_world::structural_outing_uses_frontier_route( outing ) ) ||
             ( outing.selected_watch_kind == bandit_live_world::structural_watch_kind::none &&
-              !bandit_live_world::structural_outing_uses_frontier_route( outing ) ) ||
-            ( bandit_live_world::structural_outing_uses_frontier_route( outing ) ?
+              !bandit_live_world::structural_outing_travels_to_target( outing ) ) ||
+            ( bandit_live_world::structural_outing_travels_to_target( outing ) ?
               outing.shared_route.size() < 3 : outing.shared_route.size() != 5 ) ||
             outing.member_ids.size() != 2 ) {
             continue;
@@ -13025,8 +13034,8 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel(
                                            member->get_attitude() != NPCATT_FLEE_TEMP,
                                            member->hp_percentage(), member->pos_abs() } );
                     }
-                    if( bandit_live_world::structural_outing_uses_frontier_route( outing ) ) {
-                        arrival_result = bandit_live_world::complete_structural_frontier_arrival(
+                    if( bandit_live_world::structural_outing_travels_to_target( outing ) ) {
+                        arrival_result = bandit_live_world::complete_structural_direct_arrival(
                                              site, *cursor, live_bandit_current_minutes(), reads );
                     } else {
                         arrival_result = bandit_live_world::commit_scout_pair_watch_arrival(
@@ -13428,12 +13437,13 @@ bool materialize_live_bandit_loaded_departure( bandit_live_world::site_record &s
     if( !live_bandit_initial_abstract_body_owner_is_bound( outing ) ||
         site.retired_empty_site || outing.local_projection_reconciliation_rejected ||
         !site.roster().valid || !cursor || outing.phase != scout_phase::outbound ||
-        outing.schema_version < 10 || outing.selected_watch_kind == structural_watch_kind::none ||
+        outing.schema_version < 10 ||
         outing.waypoint_index != 0 || outing.actor_route_waypoint > 0 ||
         outing.actor_departure_observed || outing.member_ids.size() != 2 ||
         !outing.casualty_ids.empty() || !outing.resolved_member_ids.empty() ||
-        !structural_watch_shared_route_is_canonical( outing.shared_route, site.anchor,
-                outing.selected_watch_omt, outing.target_footprint ) ||
+        ( structural_outing_is_physical_scavenge( outing ) ? outing.shared_route.size() < 3 :
+          !structural_watch_shared_route_is_canonical( outing.shared_route, site.anchor,
+                  outing.selected_watch_omt, outing.target_footprint ) ) ||
         live_bandit_current_minutes() < outing.last_advanced_minutes ) {
         return false;
     }
@@ -17377,7 +17387,7 @@ std::vector<tripoint_abs_omt> live_bandit_clock_homeward_path(
     outing.phase = bandit_live_world::scout_phase::returning_home;
     const int home_index = static_cast<int>( outing.shared_route.size() ) - 1;
     // Forecast the normal completed destination, not an early withdrawal.
-    outing.actor_route_waypoint = bandit_live_world::structural_outing_uses_frontier_route( outing ) ?
+    outing.actor_route_waypoint = bandit_live_world::structural_outing_travels_to_target( outing ) ?
                                  home_index - 1 : 2;
     const int destination_index = live_bandit_scout_destination_index( outing );
     if( destination_index == home_index ) {
@@ -20538,13 +20548,13 @@ live_bandit_pair_boundary_steps(
         const bool watch_arrival_crossing =
             outing.owner == bandit_live_world::simulation_owner::local &&
             outing.phase == bandit_live_world::scout_phase::observing &&
-            !bandit_live_world::structural_outing_uses_frontier_route( outing ) &&
+            !bandit_live_world::structural_outing_travels_to_target( outing ) &&
             destination == outing.selected_watch_omt;
         // Frontier and homeward crossings commit one complete pair in one OMT.
         // Selecting adjacent exits on opposite sides of an OMT boundary leaves
         // both local motors paused at slots the crossing consumer must refuse.
         const bool same_omt_exit_required = require_safe_routes ||
-                                            bandit_live_world::structural_outing_uses_frontier_route( outing ) ||
+                                            bandit_live_world::structural_outing_travels_to_target( outing ) ||
                                             bandit_live_world::local_pair_initial_departure_is_bound( outing );
         const tripoint_abs_ms destination_center =
             project_to<coords::ms>( destination ) + point( SEEX, SEEY );
@@ -21297,7 +21307,7 @@ void complete_live_bandit_ingress_boundary_steps(
          overmap_buffer.global_state.bandit_live_world.sites ) {
         bandit_live_world::active_outing_state &outing = site.active_outing;
         if( outing.member_ids.size() != 2 ||
-            bandit_live_world::structural_outing_uses_frontier_route( outing ) ) {
+            bandit_live_world::structural_outing_travels_to_target( outing ) ) {
             continue;
         }
         const auto first_step = steps.find( outing.member_ids[0] );
@@ -21383,7 +21393,7 @@ std::set<character_id> complete_live_bandit_outward_boundary_steps(
     for( bandit_live_world::site_record &site :
          overmap_buffer.global_state.bandit_live_world.sites ) {
         const auto &outing = site.active_outing;
-        const bool frontier = bandit_live_world::structural_outing_uses_frontier_route( outing );
+        const bool frontier = bandit_live_world::structural_outing_travels_to_target( outing );
         const bool initial_departure = bandit_live_world::local_pair_initial_departure_is_bound( outing );
         if( ( !bandit_live_world::local_elevated_signal_watch_recovery_needed( site ) &&
               !frontier && !initial_departure ) ||
@@ -21430,7 +21440,8 @@ std::set<character_id> complete_live_bandit_outward_boundary_steps(
               ( first->current_target() != nullptr && first->get_ai_danger() > 0.0f ) ||
               ( second->current_target() != nullptr && second->get_ai_danger() > 0.0f ) ||
               !first->is_travelling() || !second->is_travelling() ||
-              first->goal != outing.selected_watch_omt || second->goal != outing.selected_watch_omt ||
+              first->goal != ( frontier ? outing.target_omt : outing.selected_watch_omt ) ||
+              second->goal != first->goal ||
               !persist_live_bandit_local_projection_leases( site, &site, false ) ) ) {
             continue;
         }
@@ -24067,7 +24078,7 @@ void overmap_npc_move()
                 }
             }
         }
-        const bool frontier_forward = bandit_live_world::structural_outing_uses_frontier_route( outing );
+        const bool frontier_forward = bandit_live_world::structural_outing_travels_to_target( outing );
         if( ( frontier_forward ||
               ( outing.target_omt.z() > site.anchor.z() && outing.schema_version >= 10 ) ) &&
             outing.phase == bandit_live_world::scout_phase::observing &&
@@ -24446,7 +24457,7 @@ void overmap_npc_move()
             const auto destination = local_pair_ingress_destinations.find( member_id );
             return destination != local_pair_ingress_destinations.end() &&
                    candidate->is_travelling() && !candidate->has_flag( json_flag_CANNOT_MOVE ) &&
-                   ( ( !bandit_live_world::structural_outing_uses_frontier_route( outing ) &&
+                   ( ( !bandit_live_world::structural_outing_travels_to_target( outing ) &&
                        !bandit_live_world::local_pair_initial_departure_is_bound( outing ) ) ||
                      ( live_bandit_member_can_take_homeward_step( *candidate ) &&
                        candidate->get_attitude() != NPCATT_FLEE &&
@@ -25839,7 +25850,7 @@ void overmap_npc_move()
                     !outing.alternate_watch_reposition_pending &&
                     forward_destination != local_pair_forward_destinations.end() &&
                     ( outing.selected_watch_omt == forward_destination->second ||
-                      ( bandit_live_world::structural_outing_uses_frontier_route( outing ) &&
+                      ( bandit_live_world::structural_outing_travels_to_target( outing ) &&
                         outing.target_omt == forward_destination->second ) ||
                       ( bandit_live_world::local_elevated_signal_watch_recovery_needed( site ) &&
                         elevated_recovery_orders.count( elem->getID() ) != 0 ) );
