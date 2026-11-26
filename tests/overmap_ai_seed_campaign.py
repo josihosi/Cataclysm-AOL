@@ -310,7 +310,7 @@ def run(directory, limit=None):
         binary = Path(state['binary'])
         if digest(binary) != state['binary_sha256']:
             raise RuntimeError('native executable changed; create a new campaign')
-        if state['attempts'][0]['recipe']['scenario'] in (JOURNEY, CROSSING) and data_digest() != state['data_identity']:
+        if state['attempts'][0]['recipe']['scenario'] in (JOURNEY, CROSSING, CUSTODY, CUSTODY_AUTH) and data_digest() != state['data_identity']:
             raise RuntimeError('game data changed; create a new campaign')
         count = 0
         for a in state['attempts']:
