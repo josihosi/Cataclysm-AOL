@@ -317,6 +317,11 @@ bool site_record::advance( int world_turn, int active_elapsed, std::optional<boo
     if( production_elapsed < interval || birth_sequence == std::numeric_limits<std::uint64_t>::max() ) {
         return false;
     }
+    // An empty placement callback accrues a single due event without
+    // allocating an identity or consuming RNG before physical placement is possible.
+    if( !place ) {
+        return false;
+    }
     member_record birth;
     birth.token = { id, random_string( 32 ), 0, anchor };
     birth.birth_sequence = birth_sequence + 1;

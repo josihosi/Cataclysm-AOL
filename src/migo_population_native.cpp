@@ -686,17 +686,63 @@ void service_loaded()
         if( !site.activity.active ) {
             continue;
         }
-        if( !site.source || !here.inbounds( *site.source ) ) {
+        if( !site.source ) {
             continue;
         }
         const auto geometry = geometry_at( site.anchor );
         if( !geometry ) {
             continue;
         }
-        site.ambient_occupancy = ambient_count( *geometry );
-        site.occupancy_verified = occupancy_known( *geometry );
         const int elapsed = site.last_service_world == now - 1 ?
                             std::min( 1, site.activity.active_delta_turns ) : 0;
+        if( !here.inbounds( *site.source ) ) {
+            // Unknown interiors retry at most once per minute; no unverified
+            // time is credited while their saved geometry is unavailable.
+            if( site.source_destroyed || ( !site.occupancy_verified &&
+                site.last_service_world >= 0 && now % 60 != 0 ) ) {
+                site.advance( now, 0, std::nullopt, []( const member_record & ) {
+                    return false;
+                } );
+                continue;
+            }
+            // Read only existing submaps. A missing part is unknown, not a
+            // destroyed source or permission to generate a replacement map.
+            // Resident submaps are served from MAPBUFFER after the first read.
+            const std::vector<saved_part> parts = saved_parts( *geometry );
+            const tripoint_abs_sm source_sm = project_to<coords::sm>( *site.source );
+            const auto source_part = std::find_if( parts.begin(), parts.end(),
+            [&]( const saved_part &part ) {
+                return part.position == source_sm;
+            } );
+            if( source_part == parts.end() ) {
+                site.occupancy_verified = false;
+                site.advance( now, 0, std::nullopt, []( const member_record & ) {
+                    return false;
+                } );
+                continue;
+            }
+            const point_sm_ms cell( site.source->x() - source_sm.x() * SEEX,
+                                    site.source->y() - source_sm.y() * SEEY );
+            const bool source_exists = source_part->sm->get_furn( cell ).id().str() ==
+                                       site.source_furniture;
+            site.ambient_occupancy = ambient_count( *geometry );
+            for( const saved_part &part : parts ) {
+                for( const spawn_point &slot : part.sm->spawns ) {
+                    if( resident_slot( slot ) &&
+                        ( slot.population.empty() || slot.population.site_id != site.id ||
+                          !site.find( slot.population.member_id ) ) ) {
+                        site.ambient_occupancy += slot.count;
+                    }
+                }
+            }
+            site.occupancy_verified = true;
+            // Time is earned offscreen, but placement is refused until the
+            // native loaded map can authenticate geometry and retain a body.
+            site.advance( now, elapsed, source_exists, {} );
+            continue;
+        }
+        site.ambient_occupancy = ambient_count( *geometry );
+        site.occupancy_verified = occupancy_known( *geometry );
         const bool source_exists = here.furn( here.get_bub( *site.source ) ).id().str() ==
                                    site.source_furniture;
         std::optional<tripoint_abs_ms> birth_position;

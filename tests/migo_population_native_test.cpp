@@ -767,26 +767,65 @@ TEST_CASE( "migo_native_brood_service_placement_and_destroyed_source_are_once_on
         CHECK( owner().production_elapsed == 1 );
     }
     SECTION( "blocked_birth_keeps_one_event_until_real_space_exists" ) {
+        const auto native_body_count = [&]() {
+            int count = static_cast<int>( abstract_members( geometry->id, anchor ).size() );
+            for( const monster &body : g->all_monsters() ) {
+                count += body.population_identity().site_id == geometry->id;
+            }
+            return count;
+        };
+        const auto still_pending = [&]() {
+            CHECK( owner().source == absolute );
+            CHECK_FALSE( owner().source_destroyed );
+            CHECK( owner().members.empty() );
+            CHECK( owner().birth_sequence == 0 );
+            CHECK( owner().production_elapsed == to_turns<int>( 7_days ) );
+            CHECK( native_body_count() == 0 );
+        };
         for( const tripoint_bub_ms &p : here.points_in_radius( pod, 3, 0 ) ) {
             here.ter_set( p, ter_str_id( "t_wall" ) );
         }
         service_loaded();
-        CHECK( owner().members.empty() );
-        CHECK( owner().production_elapsed == to_turns<int>( 7_days ) );
+        still_pending();
         for( int i = 0; i < 3; ++i ) {
             calendar::turn += 10_days;
             service_loaded();
-            CHECK( owner().members.empty() );
+            still_pending();
+        }
+        // Exercise genuinely admitted active intervals while the tile remains
+        // blocked, as well as repeated service at the same world turn.
+        for( int i = 0; i < 3; ++i ) {
+            calendar::turn += 1_turns;
+            service_loaded();
+            REQUIRE( owner().activity.active );
+            CHECK( owner().activity.active_delta_turns == 1 );
+            still_pending();
+            service_loaded();
+            still_pending();
         }
         here.ter_set( pod + point( 1, 0 ), ter_str_id( "t_floor" ) );
         calendar::turn += 1_turns;
         service_loaded();
-        CHECK( owner().members.size() == 1 );
+        REQUIRE( owner().members.size() == 1 );
+        const member_record born = owner().members.front();
+        REQUIRE( local_member( born.token.member_id ) );
+        CHECK( local_member( born.token.member_id )->pos_abs() == here.get_abs( pod + point( 1, 0 ) ) );
+        CHECK( owner().owns( local_member( born.token.member_id )->population_identity(), representation::local ) );
+        CHECK( native_body_count() == 1 );
+        CHECK( owner().source == absolute );
         CHECK( owner().birth_sequence == 1 );
         CHECK( owner().production_elapsed == 0 );
+        service_loaded();
         calendar::turn += 1_turns;
         service_loaded();
         CHECK( owner().members.size() == 1 );
+        CHECK( owner().members.front().token.member_id == born.token.member_id );
+        CHECK( owner().birth_sequence == 1 );
+        CHECK( owner().production_elapsed == 1 );
+        CHECK( native_body_count() == 1 );
+        std::cout << "MIGO_BLOCKED source=" << absolute << " blocked_body=0 due=604800"
+                  << " active_retries=3 reopened=" << here.get_abs( pod + point( 1, 0 ) )
+                  << " born=" << born.token.member_id << " bodies=1 birth_sequence=1" << std::endl;
     }
     SECTION( "hazardous_home_has_no_safe_birth_space" ) {
         for( const tripoint_bub_ms &p : here.points_in_radius( pod, 3, 0 ) ) {
