@@ -6231,21 +6231,21 @@ TEST_CASE( "bandit_live_world_migrates_or_closes_persisted_hostile_operation_own
         const std::string before_escalation = serialize_world(
                 bandit_live_world::world_state { 6,
                         "hells_raiders_live_owner_v0", 0, 0, -1,
-        { site }, {}, {} } );
+        { site }, {}, {}, {} } );
         CHECK( transition_test_hostile_operation(
                    site, hostile_operation_phase::returning_home,
                    hostile_operation_phase::approaching, 130, "unsafe legacy escalation" ) ==
                bandit_live_world::hostile_operation_transition_result::rejected );
         CHECK( serialize_world( bandit_live_world::world_state { 6,
                                 "hells_raiders_live_owner_v0", 0, 0, -1,
-        { site }, {}, {} } ) == before_escalation );
+        { site }, {}, {}, {} } ) == before_escalation );
         CHECK( transition_test_hostile_operation(
                    site, hostile_operation_phase::returning_home,
                    hostile_operation_phase::lost, 130, "legacy party lost" ) ==
                bandit_live_world::hostile_operation_transition_result::applied );
         CHECK( serialize_world( bandit_live_world::world_state { 6,
                                 "hells_raiders_live_owner_v0", 0, 0, -1,
-        { site }, {}, {} } ) != before_escalation );
+        { site }, {}, {}, {} } ) != before_escalation );
     }
 
     SECTION( "malformed new operation releases every known in-flight reservation" ) {
