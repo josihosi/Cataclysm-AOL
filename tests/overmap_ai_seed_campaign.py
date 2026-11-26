@@ -21,6 +21,8 @@ ROOT = Path(__file__).resolve().parent.parent
 SCENARIO = 'first-sight-v1'
 JOURNEY = 'scout-journey-v1'
 CROSSING = 'scout-split-reversal-v1'
+CUSTODY = 'bandit-payment-custody-v1'
+CUSTODY_AUTH = 'bandit-payment-authenticated-v1'
 CROSSING_TEST = 'structural staged arrival leaves the distant peer on shared travel'
 CROSSING_SECTION = 'player leaves and the staged scout resumes distant travel'
 TEST = 'seed campaign first sight pilot'
@@ -54,6 +56,19 @@ def data_digest():
 def resolve(seed, game_seed, scenario=SCENARIO):
     if not (0 <= seed < 2**64 and 0 < game_seed < 2**32):
         raise ValueError('setup seed must be uint64; game seed must be nonzero uint32')
+    if scenario in (CUSTODY, CUSTODY_AUTH):
+        return {'scenario': scenario, 'setup_seed': seed, 'game_seed': game_seed,
+                'setup_rng': 'fixed-fixture-v1',
+                'setup': {'faction': 'bandit', 'physical_item': 'knife_combat',
+                          'approach': 'declared fixture report and approach',
+                          'observer_action': 'move player away after payment',
+                          'opportunity_setup': 'declared seven-member roster, alert lead, opportunity and production claim before payment' if scenario == CUSTODY_AUTH else 'not supplied'},
+                'initial_world': 'fresh native test world', 'mods': ['dda', 'test_data'],
+                'options': {'LLM_INTENT_ENABLE': 'false'},
+                'events': [{'transition': 'physical_payment', 'predicate': 'source item in home stash', 'action': 'trade'},
+                           {'transition': 'authenticated_return', 'predicate': 'same operation and generation settled paid', 'action': 'observe'},
+                           {'transition': 'once_only_credit', 'predicate': 'settlement credit and repeat service checked', 'action': 'observe'},
+                           {'transition': 'next_decision', 'predicate': 'post-settlement cooldown observed', 'action': 'observe'}]}
     if scenario == CROSSING:
         return {'scenario': CROSSING, 'setup_seed': seed, 'game_seed': game_seed,
                 'setup_rng': 'fixed-fixture-v1',
@@ -166,8 +181,8 @@ def initialize(directory, binary, setup_seeds, game_seeds, scenario=SCENARIO, fa
         dirty = subprocess.check_output(['git', 'diff', '--binary', 'HEAD', '--', 'src', 'tests/bandit_live_world_test.cpp'], cwd=ROOT)
         atomic_json(path, {'version': 1, 'checkout_commit': commit, 'checkout_dirty_sha256': hashlib.sha256(dirty).hexdigest(),
                            'runner_sha256': digest(Path(__file__)), 'binary': str(binary), 'binary_sha256': digest(binary),
-                           'native_source_sha256': digest(ROOT / ('tests/bandit_live_world_test.cpp' if scenario in (JOURNEY, CROSSING) else 'tests/overmap_ai_seed_campaign_test.cpp')),
-                           'data_identity': data_digest() if scenario in (JOURNEY, CROSSING) else 'nogame listener skips init_global_game_state; no game data loaded', 'attempts': attempts})
+                           'native_source_sha256': digest(ROOT / ('tests/bandit_live_world_test.cpp' if scenario in (JOURNEY, CROSSING, CUSTODY, CUSTODY_AUTH) else 'tests/overmap_ai_seed_campaign_test.cpp')),
+                           'data_identity': data_digest() if scenario in (JOURNEY, CROSSING, CUSTODY, CUSTODY_AUTH) else 'nogame listener skips init_global_game_state; no game data loaded', 'attempts': attempts})
 
 
 def replay(source, attempt_id, destination):
@@ -320,11 +335,15 @@ def run(directory, limit=None):
             elif scenario == CROSSING:
                 env['OPENCLAW_HARNESS_RUN_ID'] = 'seed-crossing-' + str(a['id'])
                 env['OPENCLAW_HARNESS_TRANSITION_EVENT_PATH'] = str((userdir / 'transitions.jsonl').resolve())
-            else:
+            elif scenario == CUSTODY_AUTH:
+                env['CAOL_CAMPAIGN_AUTH_SETUP'] = '1'
+            elif scenario != CUSTODY:
                 env['CAOL_CAMPAIGN_ROLLING'] = str(setup['rolling'])
-            test_name = 'seed campaign connected scout journey' if scenario == JOURNEY else (CROSSING_TEST if scenario == CROSSING else TEST)
+            test_name = 'seed campaign bandit payment custody journey' if scenario in (CUSTODY, CUSTODY_AUTH) else ('seed campaign connected scout journey' if scenario == JOURNEY else (CROSSING_TEST if scenario == CROSSING else TEST))
             command = [str(binary), test_name, '--rng-seed', str(a['recipe']['game_seed']),
                        '--user-dir', str(userdir.resolve()), '--drop-world']
+            if scenario in (CUSTODY, CUSTODY_AUTH):
+                command = ['/usr/bin/nice', '-n', '10'] + command
             if scenario == CROSSING:
                 command = ['/usr/bin/nice', '-n', '10'] + command + ['--section', CROSSING_SECTION, '--success', '--reporter', 'compact']
             proc = subprocess.run(command, cwd=ROOT, env=env, stdout=subprocess.PIPE,
@@ -339,6 +358,31 @@ def run(directory, limit=None):
                 a['last_error'] = {'exit': proc.returncode, 'reason': 'native process terminated by signal'}
                 atomic_json(path, state)
                 raise RuntimeError('native process terminated by signal; attempt remains incomplete')
+            if scenario in (CUSTODY, CUSTODY_AUTH):
+                if data_digest() != state['data_identity']:
+                    raise RuntimeError('game data changed during attempt; attempt remains incomplete')
+                lines = [line for line in proc.stdout.splitlines() if line.startswith('CUSTODY ')]
+                payment = next((line for line in lines if line.startswith('CUSTODY payment ')), None)
+                boundary = next((line for line in lines if line.startswith('CUSTODY boundary ')), None)
+                settled = bool(boundary and 'settled=1 ' in boundary)
+                repeat = next((line for line in lines if line.startswith('CUSTODY repeat ')), None)
+                repeated = repeat is not None
+                decision = bool(repeat and re.search(r'(?:^|\s)decision=cooldown(?:\s|$)', repeat))
+                a['result'] = {'exit': proc.returncode,
+                               'outcome': 'native_failure' if proc.returncode else ('settled' if settled else 'boundary_not_reached'),
+                               'observation': {'native_lines': lines, 'credit': 'abstract shakedown value',
+                                               'custody': 'physical item deposited directly to home stash before return',
+                                               'output_tail_on_failure': proc.stdout[-6000:] if proc.returncode else None},
+                               'events': [{'transition': 'physical_payment', 'reached': bool(payment), 'fired': bool(payment)},
+                                          {'transition': 'authenticated_return', 'reached': settled, 'fired': settled},
+                                          {'transition': 'once_only_credit', 'reached': settled and repeated and proc.returncode == 0,
+                                           'fired': settled and repeated and proc.returncode == 0},
+                                          {'transition': 'next_decision', 'reached': settled and decision,
+                                           'fired': settled and decision}]}
+                a['status'] = 'completed'
+                atomic_json(path, state)
+                count += 1
+                continue
             if scenario == CROSSING:
                 if data_digest() != state['data_identity']:
                     raise RuntimeError('game data changed during attempt; attempt remains incomplete')
@@ -416,7 +460,7 @@ def main():
     init = sub.add_parser('init')
     init.add_argument('directory', type=Path)
     init.add_argument('--binary', type=Path, required=True)
-    init.add_argument('--scenario', choices=[SCENARIO, JOURNEY, CROSSING], default=SCENARIO,
+    init.add_argument('--scenario', choices=[SCENARIO, JOURNEY, CROSSING, CUSTODY, CUSTODY_AUTH], default=SCENARIO,
                       help='scout-journey-v1 runs a connected native faction journey')
     init.add_argument('--failure-control', choices=['none', 'return_before_watch', 'missing_physical_return'],
                       default='none', help='test-only reporting mutation, never changes native behavior')

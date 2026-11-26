@@ -56971,7 +56971,7 @@ struct r066_visit_scene {
 
     explicit r066_visit_scene( bool unloaded = false, bool raid = false,
                                const std::string &prior_outcome = "",
-                               bool authorized_response = false ) : previous( overmap_buffer.global_state.bandit_live_world ),
+                               bool authorized_response = false, bool custody_setup = false ) : previous( overmap_buffer.global_state.bandit_live_world ),
         previous_turn( calendar::turn ), previous_player( get_avatar().pos_abs() ) {
         clear_map();
         clear_avatar();
@@ -56998,16 +56998,17 @@ struct r066_visit_scene {
                        bandit_live_world::hostile_site_profile::camp_style;
         site.anchor = target + point( 0, 3 );
         site.footprint = { site.anchor };
-        site.living_total = 4;
-        site.supply_accounted_living_total = 4;
+        const int roster_size = custody_setup ? 7 : 4;
+        site.living_total = roster_size;
+        site.supply_accounted_living_total = roster_size;
         escort = &spawn_npc( collector->pos_bub().xy() + point( 0, 1 ), "thug" );
         std::vector<npc *> members = { collector, escort };
-        for( int reserve = 0; reserve < 2; ++reserve ) {
+        for( int reserve = 0; reserve < roster_size - 2; ++reserve ) {
             npc &home = spawn_npc( collector->pos_bub().xy() + point( 2 + reserve, 2 ), "thug" );
             members.push_back( &home );
         }
         const auto home = project_to<coords::ms>( site.anchor ) + point( 12, 12 );
-        site.spawn_tiles = { { home, 4 } };
+        site.spawn_tiles = { { home, roster_size } };
         for( npc *actor : members ) {
             actor->set_fac( faction_id( raid ? "cannibal_camp" : "hells_raiders" ) );
             actor->set_attitude( NPCATT_NULL );
@@ -57036,8 +57037,27 @@ struct r066_visit_scene {
             site.next_outing_generation = 4;
         }
         const int report_generation = prior_outcome.empty() ? 1 : 3;
+        const std::string target_id = "camp-response@" + target.to_string();
+        const std::string lead_id = custody_setup ? "custody-fixture-lead" : "";
+        if( custody_setup ) {
+            bandit_live_world::camp_map_lead lead;
+            lead.lead_id = lead_id;
+            lead.revision = 3;
+            lead.kind = bandit_live_world::camp_lead_kind::basecamp_activity;
+            lead.origin = bandit_live_world::camp_lead_origin::observer;
+            lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
+            lead.target_id = target_id;
+            lead.omt = target;
+            lead.source_key = "custody-fixture-declared-source";
+            lead.target_alert = true; // Declared cautious lead reserves one more member at home.
+            lead.bounty = 1000;
+            lead.threat = 1;
+            lead.confidence = 4;
+            lead.threat_confirmed = true;
+            REQUIRE( bandit_live_world::upsert_camp_map_lead( site, lead ) );
+        }
         prepare_hostile_follow_on( site, report_generation, report_generation,
-                                   "camp-response@" + target.to_string(), target, minutes() - 6 );
+                                   target_id, target, minutes() - 6, lead_id );
         const auto kind = raid ? bandit_live_world::hostile_operation_kind::raid :
                           bandit_live_world::hostile_operation_kind::shakedown;
         if( authorized_response ) {
@@ -58347,6 +58367,277 @@ TEST_CASE( "camp response pays from physical goods and resolves only once",
     CHECK_FALSE( commit_bandit_shakedown_payment_for_test( scene.site(), surface,
                  surface.demanded_value ) );
     CHECK( r054_actor_bytes( get_avatar() ) == distant_inventory );
+}
+
+TEST_CASE( "seed campaign bandit payment custody journey", "[.][seed_campaign][bandit_custody]" )
+{
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    const bool auth_setup = std::getenv( "CAOL_CAMPAIGN_AUTH_SETUP" ) != nullptr;
+    r066_visit_scene scene( false, false, "", false, auth_setup );
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    const auto &initial_operation = scene.site().active_hostile_operation;
+    const auto target_id = initial_operation.reservation.target_id;
+    const auto target_omt = initial_operation.reservation.target_omt;
+    const auto source_key = initial_operation.source_report_application_key;
+    const auto source_operation = initial_operation.reservation.activity_id;
+    const int source_generation = initial_operation.reservation.generation;
+    const int source_revision = initial_operation.reservation.target_lead_revision;
+    if( auth_setup ) {
+        // Declared setup: model the already-observed opportunity and production
+        // claim that the fixture's pre-advanced dispatch omitted. This is not
+        // credited as a native observation or natural dispatch.
+        REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity(
+                     world, target_id, target_omt, { 1000, 3, 1 } ) );
+        REQUIRE( bandit_live_world::claim_hostile_target_opportunity( world, target_id,
+                 target_omt, source_revision, source_operation, source_key, source_generation ) ==
+                 bandit_live_world::hostile_target_claim_result::applied );
+    }
+    const auto *initial_receipt = world.find_hostile_target_opportunity( target_id, target_omt );
+    std::cout << "CUSTODY setup declared=" << auth_setup << " opportunity=" << ( initial_receipt != nullptr )
+              << " revision=" << ( initial_receipt ? initial_receipt->revision : 0 )
+              << " operation=" << source_operation << " report=" << source_key
+              << " generation=" << source_generation << " lead_revision=" << source_revision << std::endl;
+    npc &receiver = scene.camp_receiver();
+    scene.distant_adjacent_avatar();
+    const auto tile = receiver.pos_bub() + point( 1, 0 );
+    item &placed = get_map().add_item_or_charges( tile, item( itype_id( "knife_combat" ),
+                   calendar::turn ) );
+    placed.set_owner( receiver );
+    const auto placed_uid = placed.uid().get_value();
+    REQUIRE( scene.communicate() );
+    const auto surface = scene.surface( receiver );
+    REQUIRE( surface.valid );
+    item *gift = nullptr;
+    std::map<int64_t, itype_id> unrelated_before;
+    for( item &ground : get_map().i_at( tile ) ) {
+        if( ground.uid().get_value() == placed_uid ) {
+            gift = &ground;
+        } else {
+            unrelated_before.emplace( ground.uid().get_value(), ground.typeId() );
+        }
+    }
+    REQUIRE( gift );
+    REQUIRE( gift->typeId() == itype_id( "knife_combat" ) );
+    const auto uid = gift->uid().get_value();
+    const auto collector_id = scene.collector->getID();
+    const auto escort_id = scene.escort->getID();
+    const auto receiver_id = receiver.getID();
+    const auto home = scene.site().anchor;
+    const auto operation_id = scene.site().active_hostile_operation.reservation.activity_id;
+    const auto generation = scene.site().active_hostile_operation.reservation.generation;
+    const int initial_credit = scene.site().shakedown_loot_value;
+    trade_ui::trade_result_t response;
+    response.traded = true;
+    response.items_you = { { item_location( map_cursor( tile ), gift ), 1 } };
+    response.value_you = npc_trading::trading_price( *scene.collector, receiver,
+                         response.items_you.front() );
+    REQUIRE( npc_trading::complete_trade_to_stash( *scene.collector, receiver, response, home ) );
+    std::map<int64_t, itype_id> unrelated_after;
+    for( const item &ground : get_map().i_at( tile ) ) {
+        CHECK( ground.uid().get_value() != uid );
+        unrelated_after.emplace( ground.uid().get_value(), ground.typeId() );
+    }
+    CHECK( unrelated_after == unrelated_before );
+    std::cout << "CUSTODY source selected_uid=" << uid << " type=knife_combat"
+              << " unrelated_before=" << unrelated_before.size()
+              << " unrelated_after=" << unrelated_after.size() << std::endl;
+    int deposited = 0;
+    {
+        tinymap home_map;
+        home_map.load( home, false );
+        for( const auto &position : home_map.cast_to_map()->points_on_zlevel( home.z() ) ) {
+            for( const auto &goods : home_map.cast_to_map()->i_at( position ) ) {
+                if( goods.has_var( "shakedown_source" ) ) {
+                    const auto receipt = json_loader::from_string( goods.get_var( "shakedown_source", "" ) ).get_object();
+                    receipt.allow_omitted_members();
+                    for( const JsonObject source : receipt.get_array( "property" ) ) {
+                        source.allow_omitted_members();
+                        if( source.get_int64( "source_uid" ) == uid ) {
+                            ++deposited;
+                            CHECK( receipt.get_int( "collector_id" ) == collector_id.get_value() );
+                            CHECK( receipt.get_int( "receiver_id" ) == receiver.getID().get_value() );
+                        }
+                    }
+                }
+            }
+        }
+    }
+    REQUIRE( deposited == 1 );
+    CHECK_FALSE( npc_trading::complete_trade_to_stash( *scene.collector, receiver, response, home ) );
+    REQUIRE( commit_bandit_shakedown_payment_for_test( scene.site(), surface,
+             surface.demanded_value ) );
+    std::cout << "CUSTODY payment uid=" << uid << " collector=" << collector_id.get_value()
+              << " escort=" << escort_id.get_value() << " generation=" << generation
+              << " home=" << home << " operation=" << operation_id
+              << " surrendered=" << surface.demanded_value << " credit_before=" << initial_credit
+              << " direct_home_stash=1" << std::endl;
+    // Move the observer away; neither actor is relocated by the fixture.
+    g->place_player_overmap( scene.target + point( -10, 0 ), false );
+    bool logged_home = false;
+    for( int minute = 1; minute <= 120 && scene.site().active_hostile_operation.is_active(); ++minute ) {
+        calendar::turn += 1_minutes;
+        const npc *before_first = g->find_npc( collector_id );
+        const npc *before_second = g->find_npc( escort_id );
+        if( !logged_home && before_first && before_second && before_first->pos_abs_omt() == home &&
+            before_second->pos_abs_omt() == home ) {
+            const auto &op = scene.site().active_hostile_operation;
+            const auto *receipt = world.find_hostile_target_opportunity( target_id, target_omt );
+            const auto *lead = scene.site().intelligence_map.find_lead( op.reservation.target_lead_id );
+            const bool exact = receipt && receipt->consumed_operation_id == source_operation &&
+                               receipt->consumed_report_key == source_key &&
+                               receipt->consumed_generation == source_generation;
+            std::cout << "CUSTODY prerequisites minute=" << minute << " exact_receipt=" << exact
+                      << " receipt_revision=" << ( receipt ? receipt->revision : 0 )
+                      << " lead=" << ( lead != nullptr ) << " lead_revision=" << ( lead ? lead->revision : 0 )
+                      << " owner=" << bandit_live_world::to_string( op.reservation.owner )
+                      << " phase=" << bandit_live_world::to_string( op.phase )
+                      << " decision=" << bandit_live_world::to_string( scene.site().camp_decision.state )
+                      << " first=" << before_first->pos_abs_omt() << " second=" << before_second->pos_abs_omt()
+                      << std::endl;
+            logged_home = true;
+        }
+        process_overmap_npc_move_for_test();
+        if( minute == 1 || minute % 15 == 0 || !scene.site().active_hostile_operation.is_active() ) {
+            const npc *first = g->find_npc( collector_id );
+            const npc *second = g->find_npc( escort_id );
+            std::cout << "CUSTODY step minute=" << minute << " first="
+                      << ( first ? first->pos_abs_omt().to_string() : "missing" )
+                      << " second=" << ( second ? second->pos_abs_omt().to_string() : "missing" )
+                      << " active=" << scene.site().active_hostile_operation.is_active()
+                      << " credit=" << scene.site().shakedown_loot_value << std::endl;
+        }
+    }
+    const auto &site = scene.site();
+    const bool settled = !site.active_hostile_operation.is_active() &&
+                         site.last_hostile_shakedown_operation_id == operation_id &&
+                         site.last_hostile_shakedown_generation == generation &&
+                         site.last_shakedown_outcome == "paid";
+    std::cout << "CUSTODY boundary settled=" << settled << " credit=" << site.shakedown_loot_value
+              << " expected_delta=" << surface.demanded_value
+              << " aftermath_key=" << site.last_hostile_shakedown_aftermath_key
+              << " decision=" << bandit_live_world::to_string( site.camp_decision.state ) << std::endl;
+    if( settled ) {
+        CHECK( site.shakedown_loot_value == initial_credit + surface.demanded_value );
+        const int credit = site.shakedown_loot_value;
+        calendar::turn += 1_minutes;
+        process_overmap_npc_move_for_test();
+        CHECK( site.shakedown_loot_value == credit );
+        std::cout << "CUSTODY repeat credit=" << site.shakedown_loot_value
+                  << " decision=" << bandit_live_world::to_string( site.camp_decision.state ) << std::endl;
+    }
+    if( std::getenv( "CAOL_CAMPAIGN_PAYMENT_WORLD_RELOAD" ) ) {
+        REQUIRE( auth_setup );
+        REQUIRE( settled );
+        // The journey moved only the loaded map to put the player out of the
+        // way. Restore the real map under the unchanged avatar before saving.
+        const auto player_position = get_avatar().pos_abs();
+        REQUIRE( g->place_player_overmap( get_avatar().pos_abs_omt(), false ) );
+        REQUIRE( get_avatar().pos_abs() == player_position );
+        const auto *settled_receipt = world.find_hostile_target_opportunity( target_id, target_omt );
+        REQUIRE( settled_receipt );
+        REQUIRE( settled_receipt->consumed_operation_id == source_operation );
+        REQUIRE( settled_receipt->consumed_report_key == source_key );
+        REQUIRE( settled_receipt->consumed_generation == source_generation );
+        const auto collector = overmap_buffer.find_npc( collector_id );
+        const auto escort = overmap_buffer.find_npc( escort_id );
+        REQUIRE( collector );
+        REQUIRE( escort );
+        const auto collector_position = collector->pos_abs();
+        const auto escort_position = escort->pos_abs();
+        const int credit = site.shakedown_loot_value;
+        const auto aftermath = site.last_hostile_shakedown_aftermath_key;
+        const auto decision = site.camp_decision.state;
+        REQUIRE_FALSE( aftermath.empty() );
+        REQUIRE( decision == bandit_live_world::camp_decision_state::cooldown );
+        REQUIRE( collector->pos_abs_omt() == home );
+        REQUIRE( escort->pos_abs_omt() == home );
+        struct stash_record {
+            std::int64_t item_uid;
+            tripoint_abs_ms position;
+            std::string provenance;
+        };
+        const auto find_deposit = [&]() {
+            std::vector<stash_record> found;
+            const auto base = project_to<coords::sm>( home );
+            for( int x = 0; x < 2; ++x ) {
+                for( int y = 0; y < 2; ++y ) {
+                    REQUIRE( MAPBUFFER.lookup_submap_existing( base + point( x, y ) ) );
+                }
+            }
+            tinymap map;
+            map.load( home, false );
+            for( const auto &position : map.cast_to_map()->points_on_zlevel( home.z() ) ) {
+                for( const auto &goods : map.cast_to_map()->i_at( position ) ) {
+                    if( !goods.has_var( "shakedown_source" ) ) {
+                        continue;
+                    }
+                    const auto provenance = goods.get_var( "shakedown_source", "" );
+                    const auto receipt = json_loader::from_string( provenance ).get_object();
+                    receipt.allow_omitted_members();
+                    for( const JsonObject source : receipt.get_array( "property" ) ) {
+                        source.allow_omitted_members();
+                        if( source.get_int64( "source_uid" ) == uid ) {
+                            CHECK( receipt.get_int( "collector_id" ) == collector_id.get_value() );
+                            CHECK( receipt.get_int( "receiver_id" ) == receiver_id.get_value() );
+                            CHECK( receipt.get_string( "operation_id" ) == operation_id );
+                            CHECK( receipt.get_int( "generation" ) == generation );
+                            found.push_back( { goods.uid().get_value(), map.cast_to_map()->get_abs( position ),
+                                               provenance } );
+                        }
+                    }
+                }
+            }
+            return found;
+        };
+        const auto before = find_deposit();
+        REQUIRE( before.size() == 1 );
+        REQUIRE( before.front().item_uid > 0 );
+        const auto world_name = world_generator->active_world->world_name;
+        REQUIRE( g->save() );
+        REQUIRE( turn_handler::cleanup_at_end() );
+        world_generator->set_active_world( nullptr );
+        REQUIRE( g->load( world_name ) );
+        auto *reloaded_site = overmap_buffer.global_state.bandit_live_world.find_site( "r066-visit" );
+        REQUIRE( reloaded_site );
+        const auto *reloaded_receipt = overmap_buffer.global_state.bandit_live_world.
+                                       find_hostile_target_opportunity( target_id, target_omt );
+        REQUIRE( reloaded_receipt );
+        CHECK( reloaded_receipt->consumed_operation_id == source_operation );
+        CHECK( reloaded_receipt->consumed_report_key == source_key );
+        CHECK( reloaded_receipt->consumed_generation == source_generation );
+        CHECK_FALSE( reloaded_site->active_hostile_operation.is_active() );
+        CHECK( reloaded_site->last_hostile_shakedown_operation_id == operation_id );
+        CHECK( reloaded_site->last_hostile_shakedown_generation == generation );
+        CHECK( reloaded_site->last_hostile_shakedown_aftermath_key == aftermath );
+        CHECK( reloaded_site->last_shakedown_outcome == "paid" );
+        CHECK( reloaded_site->shakedown_loot_value == credit );
+        CHECK( reloaded_site->camp_decision.state == decision );
+        const auto reloaded_collector = overmap_buffer.find_npc( collector_id );
+        const auto reloaded_escort = overmap_buffer.find_npc( escort_id );
+        REQUIRE( reloaded_collector );
+        REQUIRE( reloaded_escort );
+        CHECK( reloaded_collector->pos_abs() == collector_position );
+        CHECK( reloaded_escort->pos_abs() == escort_position );
+        const auto after = find_deposit();
+        REQUIRE( after.size() == 1 );
+        CHECK( after.front().item_uid == before.front().item_uid );
+        CHECK( after.front().position == before.front().position );
+        CHECK( after.front().provenance == before.front().provenance );
+        calendar::turn += 1_minutes;
+        process_overmap_npc_move_for_test();
+        reloaded_site = overmap_buffer.global_state.bandit_live_world.find_site( "r066-visit" );
+        REQUIRE( reloaded_site );
+        CHECK( reloaded_site->shakedown_loot_value == credit );
+        CHECK( reloaded_site->last_hostile_shakedown_aftermath_key == aftermath );
+        const auto repeated = find_deposit();
+        REQUIRE( repeated.size() == 1 );
+        CHECK( repeated.front().item_uid == before.front().item_uid );
+        CHECK( repeated.front().provenance == before.front().provenance );
+        std::cout << "CUSTODY world_reload source_uid=" << uid << " stash_uid=" << before.front().item_uid
+                  << " collector=" << collector_id.get_value() << " escort=" << escort_id.get_value()
+                  << " operation=" << operation_id << " generation=" << generation
+                  << " credit=" << credit << " same_item=1 same_actors=1 repeat_credit=unchanged" << std::endl;
+    }
 }
 
 TEST_CASE( "third party interruption preserves camp intent and real attacks release it",
