@@ -23,6 +23,10 @@ JOURNEY = 'scout-journey-v1'
 CROSSING = 'scout-split-reversal-v1'
 CUSTODY = 'bandit-payment-custody-v1'
 CUSTODY_AUTH = 'bandit-payment-authenticated-v1'
+BROOD = 'migo-earned-brood-v1'
+BROOD_RELOAD = 'migo-earned-brood-reload-v1'
+BROOD_SCENARIOS = (BROOD, BROOD_RELOAD)
+BROOD_TEST = 'seed campaign migo loaded unloaded frozen active clock'
 CROSSING_TEST = 'structural staged arrival leaves the distant peer on shared travel'
 CROSSING_SECTION = 'player leaves and the staged scout resumes distant travel'
 TEST = 'seed campaign first sight pilot'
@@ -56,6 +60,14 @@ def data_digest():
 def resolve(seed, game_seed, scenario=SCENARIO):
     if not (0 <= seed < 2**64 and 0 < game_seed < 2**32):
         raise ValueError('setup seed must be uint64; game seed must be nonzero uint32')
+    if scenario in BROOD_SCENARIOS:
+        names = ['earned_active_time'] + (['world_reload'] if scenario == BROOD_RELOAD else []) + ['birth_placement']
+        return {'scenario': scenario, 'setup_seed': seed, 'game_seed': game_seed,
+                'setup_rng': 'fixed-fixture-v1',
+                'setup': {'source': 'one pod and resident', 'execution': 'direct native service calls',
+                          'observer': 'explicit avatar relocation'},
+                'initial_world': 'fresh native test world', 'mods': ['dda', 'test_data'], 'options': {},
+                'events': [{'transition': name, 'predicate': 'verified native observation', 'action': 'observe'} for name in names]}
     if scenario in (CUSTODY, CUSTODY_AUTH):
         return {'scenario': scenario, 'setup_seed': seed, 'game_seed': game_seed,
                 'setup_rng': 'fixed-fixture-v1',
@@ -181,8 +193,10 @@ def initialize(directory, binary, setup_seeds, game_seeds, scenario=SCENARIO, fa
         dirty = subprocess.check_output(['git', 'diff', '--binary', 'HEAD', '--', 'src', 'tests/bandit_live_world_test.cpp'], cwd=ROOT)
         atomic_json(path, {'version': 1, 'checkout_commit': commit, 'checkout_dirty_sha256': hashlib.sha256(dirty).hexdigest(),
                            'runner_sha256': digest(Path(__file__)), 'binary': str(binary), 'binary_sha256': digest(binary),
-                           'native_source_sha256': digest(ROOT / ('tests/bandit_live_world_test.cpp' if scenario in (JOURNEY, CROSSING, CUSTODY, CUSTODY_AUTH) else 'tests/overmap_ai_seed_campaign_test.cpp')),
-                           'data_identity': data_digest() if scenario in (JOURNEY, CROSSING, CUSTODY, CUSTODY_AUTH) else 'nogame listener skips init_global_game_state; no game data loaded', 'attempts': attempts})
+                           'native_source_sha256': digest(ROOT / ('tests/migo_campaign_active_clock_test.cpp' if scenario in BROOD_SCENARIOS else ('tests/bandit_live_world_test.cpp' if scenario in (JOURNEY, CROSSING, CUSTODY, CUSTODY_AUTH) else 'tests/overmap_ai_seed_campaign_test.cpp'))),
+                           'native_source_scope': 'working-checkout-only' if scenario in BROOD_SCENARIOS else 'working-checkout',
+                           'compiled_fixture_sha256': None,
+                           'data_identity': data_digest() if scenario in (JOURNEY, CROSSING, CUSTODY, CUSTODY_AUTH, *BROOD_SCENARIOS) else 'nogame listener skips init_global_game_state; no game data loaded', 'attempts': attempts})
 
 
 def replay(source, attempt_id, destination):
@@ -297,6 +311,42 @@ def crossing_observation(output, events):
             'production_events': [dispatch, *initial_prepares, peer, resumed]}
 
 
+def brood_observation(output, reload_requested):
+    def lines(prefix):
+        return [line[line.index(prefix):] for line in output.splitlines() if prefix in line]
+    rows = lines('MIGO_CLOCK ')
+    samples = [dict(token.split('=', 1) for token in row.split()[1:]) for row in rows]
+    previous = None
+    failure = None
+    for sample in samples:
+        if previous and sample['phase'] == 'active_unloaded' and int(sample['delta']) > 0:
+            production_delta = int(sample['elapsed']) - int(previous['elapsed'])
+            activity_delta = int(sample['delta'])
+            if production_delta != activity_delta:
+                failure = {'group': {'invariant': 'active_unloaded_clock'},
+                           'phase': sample['phase'], 'step': int(sample['step']),
+                           'world_turn': int(sample['world']), 'production_delta': production_delta,
+                           'activity_delta': activity_delta}
+                break
+        previous = sample
+    cycles = lines('MIGO_CYCLE ')
+    reloads = lines('MIGO_RELOAD ')
+    if failure:
+        return {'samples': rows, 'cycle': cycles, 'reload': reloads, 'first_failure': failure,
+                'scope': 'direct native services and explicit avatar relocation; not full simulation turns'}
+    if not {'loaded', 'active_unloaded', 'frozen', 'loaded_again'}.issubset({s['phase'] for s in samples}):
+        raise ValueError('missing clock phase')
+    if not any('earned=604800 birth_sequence=0 ' in line for line in cycles):
+        raise ValueError('missing earned birth')
+    if reload_requested and not reloads:
+        raise ValueError('missing requested reload event')
+    if not any('placed=1 roster=2 native_bodies=1 ' in line for line in cycles):
+        raise ValueError('missing physical placement')
+    return {'samples': rows, 'cycle': cycles, 'reload': reloads,
+            'first_failure': failure,
+            'scope': 'direct native services and explicit avatar relocation; not full simulation turns'}
+
+
 def run(directory, limit=None):
     lock = acquire(directory)
     with lock:
@@ -310,8 +360,10 @@ def run(directory, limit=None):
         binary = Path(state['binary'])
         if digest(binary) != state['binary_sha256']:
             raise RuntimeError('native executable changed; create a new campaign')
-        if state['attempts'][0]['recipe']['scenario'] in (JOURNEY, CROSSING, CUSTODY, CUSTODY_AUTH) and data_digest() != state['data_identity']:
+        if state['attempts'][0]['recipe']['scenario'] in (JOURNEY, CROSSING, CUSTODY, CUSTODY_AUTH, *BROOD_SCENARIOS) and data_digest() != state['data_identity']:
             raise RuntimeError('game data changed; create a new campaign')
+        if state['attempts'][0]['recipe']['scenario'] in BROOD_SCENARIOS and digest(ROOT / 'tests/migo_campaign_active_clock_test.cpp') != state['native_source_sha256']:
+            raise RuntimeError('working fixture changed; create a new campaign')
         count = 0
         for a in state['attempts']:
             if a['status'] == 'completed':
@@ -335,11 +387,17 @@ def run(directory, limit=None):
             elif scenario == CROSSING:
                 env['OPENCLAW_HARNESS_RUN_ID'] = 'seed-crossing-' + str(a['id'])
                 env['OPENCLAW_HARNESS_TRANSITION_EVENT_PATH'] = str((userdir / 'transitions.jsonl').resolve())
+            elif scenario in BROOD_SCENARIOS:
+                env['CAOL_MIGO_EARN_CYCLE'] = '1'
+                if scenario == BROOD_RELOAD:
+                    env['CAOL_MIGO_WORLD_RELOAD'] = '1'
             elif scenario == CUSTODY_AUTH:
                 env['CAOL_CAMPAIGN_AUTH_SETUP'] = '1'
             elif scenario != CUSTODY:
                 env['CAOL_CAMPAIGN_ROLLING'] = str(setup['rolling'])
             test_name = 'seed campaign bandit payment custody journey' if scenario in (CUSTODY, CUSTODY_AUTH) else ('seed campaign connected scout journey' if scenario == JOURNEY else (CROSSING_TEST if scenario == CROSSING else TEST))
+            if scenario in BROOD_SCENARIOS:
+                test_name = BROOD_TEST
             command = [str(binary), test_name, '--rng-seed', str(a['recipe']['game_seed']),
                        '--user-dir', str(userdir.resolve()), '--drop-world']
             if scenario in (CUSTODY, CUSTODY_AUTH):
@@ -358,6 +416,28 @@ def run(directory, limit=None):
                 a['last_error'] = {'exit': proc.returncode, 'reason': 'native process terminated by signal'}
                 atomic_json(path, state)
                 raise RuntimeError('native process terminated by signal; attempt remains incomplete')
+            if scenario in BROOD_SCENARIOS:
+                if data_digest() != state['data_identity'] or digest(ROOT / 'tests/migo_campaign_active_clock_test.cpp') != state['native_source_sha256']:
+                    raise RuntimeError('brood inputs changed during attempt; attempt remains incomplete')
+                try:
+                    observed = brood_observation(proc.stdout, scenario == BROOD_RELOAD)
+                except (KeyError, ValueError) as error:
+                    a['last_error'] = {'exit': proc.returncode, 'reason': str(error), 'output_tail': proc.stdout[-4000:]}
+                    atomic_json(path, state)
+                    raise RuntimeError('brood observation incomplete: ' + str(error)) from error
+                failure = observed.pop('first_failure')
+                outcome = 'native_failure' if proc.returncode else ('invariant_failure' if failure else 'pass')
+                reached = outcome == 'pass'
+                a['result'] = {'exit': proc.returncode, 'outcome': outcome, 'observation': observed,
+                               'first_failure': failure if not proc.returncode else None,
+                               'events': [{'transition': event['transition'], 'reached': reached, 'fired': reached}
+                                          for event in a['recipe']['events']]}
+                a['status'] = 'completed'
+                atomic_json(path, state)
+                count += 1
+                if outcome != 'pass':
+                    break
+                continue
             if scenario in (CUSTODY, CUSTODY_AUTH):
                 if data_digest() != state['data_identity']:
                     raise RuntimeError('game data changed during attempt; attempt remains incomplete')
@@ -460,7 +540,7 @@ def main():
     init = sub.add_parser('init')
     init.add_argument('directory', type=Path)
     init.add_argument('--binary', type=Path, required=True)
-    init.add_argument('--scenario', choices=[SCENARIO, JOURNEY, CROSSING, CUSTODY, CUSTODY_AUTH], default=SCENARIO,
+    init.add_argument('--scenario', choices=[SCENARIO, JOURNEY, CROSSING, CUSTODY, CUSTODY_AUTH, *BROOD_SCENARIOS], default=SCENARIO,
                       help='scout-journey-v1 runs a connected native faction journey')
     init.add_argument('--failure-control', choices=['none', 'return_before_watch', 'missing_physical_return'],
                       default='none', help='test-only reporting mutation, never changes native behavior')
