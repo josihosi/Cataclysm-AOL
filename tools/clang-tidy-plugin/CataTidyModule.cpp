@@ -18,6 +18,7 @@
 #include "NoStaticTranslationCheck.h"
 #include "ObservationCostCheck.h"
 #include "OtMatchCheck.h"
+#include "OvermapPartyRosterCheck.h"
 #include "PointInitializationCheck.h"
 #include "RedundantParenthesesCheck.h"
 #include "SerializeCheck.h"
@@ -77,6 +78,7 @@ class CataModule : public ClangTidyModule
             CheckFactories.registerCheck<DeterminismCheck>( "cata-determinism" );
             CheckFactories.registerCheck<CataHeaderGuardCheck>( "cata-header-guard" );
             CheckFactories.registerCheck<HordeLightSampleOrderCheck>( "cata-horde-light-sample-order" );
+            CheckFactories.registerCheck<OvermapPartyRosterCheck>( "cata-overmap-party-roster" );
             CheckFactories.registerCheck<JsonTranslationInputCheck>( "cata-json-translation-input" );
             CheckFactories.registerCheck<LargeInlineFunctionCheck>( "cata-large-inline-function" );
             CheckFactories.registerCheck<LargeStackObjectCheck>( "cata-large-stack-object" );

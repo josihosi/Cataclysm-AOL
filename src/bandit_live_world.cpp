@@ -15,6 +15,7 @@
 #include <limits>
 #include <iterator>
 #include <map>
+#include <numeric>
 #include <optional>
 #include <set>
 #include <sstream>
@@ -114,7 +115,6 @@ using bandit_live_world::structural_signal_read;
 using bandit_live_world::structural_watch_kind;
 using bandit_live_world::target_footprint_watch_distance;
 
-constexpr std::size_t max_active_outing_members = 16;
 constexpr std::size_t max_active_outing_route_steps = 256;
 
 // The report pins the observed source.  A hostile party can travel to an
@@ -126,10 +126,8 @@ bool hostile_approach_matches_report( const tripoint_abs_omt &approach,
            std::abs( approach.x() - reported_target.x() ) <= 1 &&
            std::abs( approach.y() - reported_target.y() ) <= 1;
 }
-constexpr std::size_t max_hostile_operation_members = 6;
 constexpr std::size_t max_active_outing_observations = 16;
 constexpr std::size_t max_sortie_observation_batch = 64;
-constexpr std::size_t max_active_outing_casualties = 16;
 constexpr std::size_t max_structural_target_footprint_omts = 64;
 constexpr std::size_t max_structural_watch_candidates = 256;
 constexpr std::size_t max_covert_burn_egress_candidates = 8;
@@ -3128,6 +3126,19 @@ bool hostile_operation_phase_matches_reservation(
     }
 }
 
+// Compare the physical formation independently of its issued size.
+bool positions_fit_cohesion_radius( const std::vector<tripoint_abs_ms> &positions )
+{
+    for( auto first = positions.begin(); first != positions.end(); ++first ) {
+        if( std::any_of( std::next( first ), positions.end(), [&]( const auto &second ) {
+        return rl_dist( *first, second ) > local_pair_cohesion_radius_ms;
+        } ) ) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool local_handoff_snapshot_is_empty(
     const bandit_live_world::local_handoff_snapshot &snapshot )
 {
@@ -3384,7 +3395,8 @@ snapshot.cohesion_reroutes_used > local_pair_reroute_cap ||
                        member.staging_position ) != staging_positions.end() ||
             ( !member.dead && member.staging_position == member.entry_position &&
               !assembled_physical_resume_pair && !abstract_homeward_pair &&
-              !( intermediate_local_pair && snapshot.cohesion_assembled ) ) ||
+              !( snapshot.cohesion_assembled &&
+                 ( intermediate_local_pair || snapshot.members.size() == 1 ) ) ) ||
             ( abstract_homeward_pair && !snapshot.cohesion_abort_return && !member.dead &&
               ( project_to<coords::omt>( member.entry_position ) != snapshot.route_position ||
                 project_to<coords::omt>( member.staging_position ) != snapshot.route_position ) ) ||
@@ -3424,23 +3436,18 @@ snapshot.cohesion_reroutes_used > local_pair_reroute_cap ||
                                         snapshot.route_position == outing.shared_route.front() &&
                                         ( outing.selected_watch_kind != structural_watch_kind::none ||
                                           bandit_live_world::structural_outing_is_physical_scavenge( outing ) );
-    if( !abstract_homeward_pair && living_entry_positions.size() == 2 ) {
-        if( !initial_home_departure &&
-            rl_dist( living_entry_positions[0], living_entry_positions[1] ) >
-            local_pair_cohesion_radius_ms ) {
-            return refuse( "snapshot_living_entry_radius" );
-        }
-        if( rl_dist( living_staging_positions[0], living_staging_positions[1] ) >
-            local_pair_cohesion_radius_ms ) {
-            return refuse( "snapshot_living_staging_radius" );
-        }
+    if( !abstract_homeward_pair && !initial_home_departure &&
+        !positions_fit_cohesion_radius( living_entry_positions ) ) {
+        return refuse( "snapshot_living_entry_radius" );
     }
-    if( snapshot_member_ids.size() != 2 || outing.member_ids.size() != 2 ) {
-        return refuse( "snapshot_member_count" );
+    if( !abstract_homeward_pair && !positions_fit_cohesion_radius( living_staging_positions ) ) {
+        return refuse( "snapshot_living_staging_radius" );
     }
     return std::all_of( outing.member_ids.begin(), outing.member_ids.end(),
-    [&snapshot_member_ids]( const character_id member_id ) {
-        return std::find( snapshot_member_ids.begin(), snapshot_member_ids.end(), member_id ) !=
+    [&outing, &snapshot_member_ids]( const character_id member_id ) {
+        // A casualty or earlier return may precede the first local snapshot.
+        return outing.member_is_resolved( member_id ) ||
+               std::find( snapshot_member_ids.begin(), snapshot_member_ids.end(), member_id ) !=
                snapshot_member_ids.end();
     } ) || refuse( "snapshot_member_set" );
 }
@@ -3933,8 +3940,9 @@ bool structural_terminal_assessment_clock_is_bound(
         outing.activity_id != site.active_outing.activity_id ||
         outing.target_lead_revision <= 0 ||
         outing.assessment.pinned_target_revision != outing.target_lead_revision ||
-        outing.member_ids.size() != 2 || outing.casualty_ids.size() != 2 ||
-        outing.resolved_member_ids.size() != 2 || !outing.member_return_receipts.empty() ||
+        outing.member_ids.empty() || outing.casualty_ids.size() != outing.member_ids.size() ||
+        outing.resolved_member_ids.size() != outing.member_ids.size() ||
+        !outing.member_return_receipts.empty() ||
         !site.roster().valid || !simulation_owner_state_is_consistent( outing ) ) {
         return false;
     }
@@ -4964,7 +4972,7 @@ bool begin_structural_admission( site_record &site,
         !simulation_cursor_matches( outing, expected_cursor ) ||
         !simulation_owner_state_is_consistent( outing ) || !site.roster().valid ||
         !crossing_receipt_allows_runtime_progress( outing ) ||
-        outing.member_ids.empty() || outing.member_ids.size() > 2 ) {
+        outing.member_ids.empty() ) {
         return false;
     }
     if( outing.structural_admission.is_active() ) {
@@ -5210,8 +5218,7 @@ local_handoff_preflight preflight_local_pair_handoff( const site_record &site,
             surviving_member_ids.push_back( member_id );
         }
     }
-    bool identities_valid = surviving_member_ids.size() >= 1 &&
-                            surviving_member_ids.size() <= 2 &&
+    bool identities_valid = !surviving_member_ids.empty() &&
                             member_reads.size() == surviving_member_ids.size();
     if( identities_valid ) {
         for( const character_id member_id : surviving_member_ids ) {
@@ -5250,7 +5257,7 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
         return plan;
     }
     const active_outing_state &outing = site.active_outing;
-    const bool staged_pair = outing.structural_admission.is_active();
+    const bool staged_admission = outing.structural_admission.is_active();
     const bool resumes_physical_homeward_cursor = outing.local_handoff.is_abstract_resume();
     const bool resumes_retained_homeward_position = resumes_physical_homeward_cursor &&
             scout_phase_requires_homeward_only( outing.phase ) &&
@@ -5281,9 +5288,9 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
         }
         surviving_member_ids.push_back( member_id );
     }
-    if( surviving_member_ids.empty() || surviving_member_ids.size() > 2 ||
+    if( surviving_member_ids.empty() ||
         member_reads.size() != surviving_member_ids.size() ) {
-        plan.notes.push_back( "local handoff blocked: complete surviving pair is unavailable" );
+        plan.notes.push_back( "local handoff blocked: complete surviving roster is unavailable" );
         return plan;
     }
 
@@ -5321,12 +5328,11 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
                                   surviving_member_ids.end() ? outing.leader_id :
                                   surviving_member_ids.front();
     snapshot.committed_minutes = current_minutes;
-    if( staged_pair ) {
-        if( member_reads.size() != 2 || !outing.casualty_ids.empty() ||
-            outing.structural_admission.staged.size() != member_reads.size() ||
+    if( staged_admission ) {
+        if( outing.structural_admission.staged.size() != member_reads.size() ||
             outing.actor_route_waypoint < 0 ||
             outing.actor_route_waypoint >= static_cast<int>( outing.shared_route.size() ) ) {
-            plan.notes.push_back( "local handoff blocked: incomplete staged pair or destination" );
+            plan.notes.push_back( "local handoff blocked: incomplete staged roster or destination" );
             return plan;
         }
         const auto physical_position = project_to<coords::omt>( member_reads.front().current_position );
@@ -5365,24 +5371,14 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
     for( const character_id &member_id : outing.member_ids ) {
         if( std::find( surviving_member_ids.begin(), surviving_member_ids.end(), member_id ) ==
             surviving_member_ids.end() ) {
-            if( !resumes_physical_homeward_cursor ) {
-                plan.notes.push_back(
-                    "local handoff blocked: casualty has no physical resume snapshot" );
-                return plan;
-            }
             const auto casualty_snapshot = std::find_if(
                                                outing.local_handoff.members.begin(), outing.local_handoff.members.end(),
             [&member_id]( const local_handoff_member_snapshot & candidate ) {
                 return candidate.npc_id == member_id && candidate.dead;
             } );
-            if( casualty_snapshot == outing.local_handoff.members.end() ||
-                std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), member_id ) ==
-                outing.casualty_ids.end() ) {
-                plan.notes.push_back(
-                    "local handoff blocked: casualty resume state is contradictory" );
-                return plan;
+            if( casualty_snapshot != outing.local_handoff.members.end() ) {
+                snapshot.members.push_back( *casualty_snapshot );
             }
-            snapshot.members.push_back( *casualty_snapshot );
             continue;
         }
         const auto read_iter = std::find_if( member_reads.begin(), member_reads.end(),
@@ -5402,8 +5398,8 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
             std::find( casualty_staging_positions.begin(), casualty_staging_positions.end(),
                        read_iter->staging_position ) != casualty_staging_positions.end() ||
             ( read_iter->staging_position == read_iter->entry_position &&
-              !resumes_assembled_homeward_pair && !staged_pair ) ||
-            ( staged_pair && ( read_iter->current_position != read_iter->entry_position ||
+              !resumes_assembled_homeward_pair && !staged_admission ) ||
+            ( staged_admission && ( read_iter->current_position != read_iter->entry_position ||
                                read_iter->entry_position != read_iter->staging_position ||
                                std::none_of( outing.structural_admission.staged.begin(),
                                              outing.structural_admission.staged.end(),
@@ -5422,15 +5418,18 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
         entry_positions.push_back( read_iter->entry_position );
         staging_positions.push_back( read_iter->staging_position );
     }
-    if( staged_pair && !snapshot.has_intermediate_route_position() &&
-        snapshot.cohesion_assembled && snapshot.members.size() == 2 ) {
-        // A completed watch uses the ordinary pair snapshot. Both actors are
-        // already cohesive, so their real partner positions are the distinct
-        // staging destinations; no body is moved by this representation.
-        snapshot.members[0].staging_position = snapshot.members[1].entry_position;
-        snapshot.members[1].staging_position = snapshot.members[0].entry_position;
-        staging_positions[0] = snapshot.members[0].staging_position;
-        staging_positions[1] = snapshot.members[1].staging_position;
+    if( staged_admission && !snapshot.has_intermediate_route_position() &&
+        staging_positions.size() > 1 ) {
+        // A completed watch records the existing formation. Give each
+        // survivor a distinct staging slot without moving any body.
+        std::rotate( staging_positions.begin(), std::next( staging_positions.begin() ),
+                     staging_positions.end() );
+        auto slot = staging_positions.begin();
+        for( auto &member : snapshot.members ) {
+            if( !member.dead ) {
+                member.staging_position = *slot++;
+            }
+        }
     }
     const bool initial_home_departure = outing.schema_version >= 10 &&
                                         outing.phase == scout_phase::outbound &&
@@ -5439,12 +5438,9 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
                                         ( outing.selected_watch_kind != structural_watch_kind::none ||
                                           structural_outing_is_physical_scavenge( outing ) ) &&
                                         !outing.actor_departure_observed;
-    if( entry_positions.size() == 2 &&
-        ( ( !initial_home_departure &&
-            rl_dist( entry_positions[0], entry_positions[1] ) > local_pair_cohesion_radius_ms ) ||
-          rl_dist( staging_positions[0], staging_positions[1] ) >
-          local_pair_cohesion_radius_ms ) ) {
-        plan.notes.push_back( "local handoff blocked: pair slots are outside cohesion radius" );
+    if( ( !initial_home_departure && !positions_fit_cohesion_radius( entry_positions ) ) ||
+        !positions_fit_cohesion_radius( staging_positions ) ) {
+        plan.notes.push_back( "local handoff blocked: roster slots are outside cohesion radius" );
         return plan;
     }
     if( scout_phase_requires_homeward_only( outing.phase ) ) {
@@ -5637,8 +5633,8 @@ local_dematerialization_plan plan_local_pair_dematerialization( const site_recor
         !outing.local_handoff.is_active() || current_minutes < 0 ||
         current_minutes < outing.last_advanced_minutes ||
         outing.handoff_epoch == std::numeric_limits<int>::max() ||
-        outing.member_ids.size() != 2 || outing.local_handoff.members.size() != 2 ||
-        member_reads.size() != 2 || cargo.supply_units < 0 || cargo.trade_value < 0 ||
+        member_reads.size() != outing.local_handoff.members.size() ||
+        cargo.supply_units < 0 || cargo.trade_value < 0 ||
         outing.local_handoff.schema_version < 3 ||
         ( !outing.local_handoff.cohesion_assembled &&
           !outing.local_handoff.cohesion_abort_return && outing.phase != scout_phase::lost ) ||
@@ -5757,9 +5753,7 @@ local_dematerialization_plan plan_local_pair_dematerialization( const site_recor
         read_member_ids.push_back( read_iter->npc_id );
     }
     if( !snapshot.cohesion_abort_return && !all_survivors_confirmed_homeward_exit &&
-        surviving_exit_positions.size() == 2 &&
-        rl_dist( surviving_exit_positions[0], surviving_exit_positions[1] ) >
-        local_pair_cohesion_radius_ms ) {
+        !positions_fit_cohesion_radius( surviving_exit_positions ) ) {
         plan.notes.push_back( "local dematerialization blocked: surviving pair separated" );
         return plan;
     }
@@ -5828,8 +5822,7 @@ local_dematerialization_plan plan_local_pair_dematerialization( const site_recor
             snapshot.cohesion_leader_id = *replacement;
         }
     }
-    if( read_member_ids.size() != 2 || snapshot.casualty_ids.size() > 2 ||
-        !snapshot.is_abstract_resume() ) {
+    if( read_member_ids.size() != snapshot.members.size() || !snapshot.is_abstract_resume() ) {
         plan.notes.push_back( "local dematerialization blocked: complete resume snapshot is invalid" );
         return plan;
     }
@@ -6009,7 +6002,7 @@ bool begin_abstract_pair_homeward_resume( site_record &site,
         !crossing_receipt_allows_runtime_progress( outing ) ||
         !local_handoff_snapshot_is_empty( outing.local_handoff ) ||
         !scout_phase_requires_homeward_only( outing.phase ) ||
-        !outing.actor_departure_observed || outing.member_ids.size() != 2 ||
+        !outing.actor_departure_observed || outing.member_ids.empty() ||
         member_reads.size() != outing.member_ids.size() ||
         outing.shared_route.size() < 4 || outing.waypoint_index < 0 ||
         outing.actor_route_waypoint <= outing.waypoint_index ||
@@ -6084,15 +6077,15 @@ bool begin_abstract_pair_homeward_resume( site_record &site,
     resume.casualty_ids = next.casualty_ids;
     resume.cohesion_leader_id = next.leader_id;
     resume.committed_minutes = current_minutes;
+    std::rotate( surviving_positions.begin(), std::next( surviving_positions.begin() ),
+                 surviving_positions.end() );
+    auto stage = surviving_positions.begin();
     for( const character_id member_id : next.member_ids ) {
         const auto read = std::find_if( member_reads.begin(), member_reads.end(),
         [member_id]( const local_abstract_resume_progress_read & candidate_read ) {
             return candidate_read.npc_id == member_id;
         } );
-        const tripoint_abs_ms staging_position = read->dead || surviving_positions.size() == 1 ?
-                read->current_position :
-                surviving_positions.front() == read->current_position ?
-                surviving_positions.back() : surviving_positions.front();
+        const tripoint_abs_ms staging_position = read->dead ? read->current_position : *stage++;
         resume.members.push_back( { member_id, read->current_position,
                                     read->current_position, staging_position,
                                     read->current_position, read->hp_percent, read->dead } );
@@ -6189,16 +6182,17 @@ std::optional<site_record> local_pair_abstract_resume_progress_candidate( const 
         ( !scout_phase_requires_homeward_only( outing.phase ) &&
           !retained_abstract_arrival_destination( outing ) ) ||
         !outing.local_handoff.is_abstract_resume() ||
-        outing.member_ids.size() != 2 || outing.local_handoff.members.size() != 2 ||
-        member_reads.size() != 2 || current_minutes < outing.last_advanced_minutes ||
+        member_reads.size() != outing.local_handoff.members.size() ||
+        current_minutes < outing.last_advanced_minutes ||
         current_minutes <= outing.local_handoff.committed_minutes ) {
         return refuse( "resume_owner_cursor_or_time" );
     }
 
     std::vector<const local_abstract_resume_progress_read *> reads;
-    reads.reserve( outing.member_ids.size() );
+    reads.reserve( outing.local_handoff.members.size() );
     std::optional<tripoint_abs_omt> progressed_omt;
-    for( const character_id member_id : outing.member_ids ) {
+    for( const auto &snapshot_member : outing.local_handoff.members ) {
+        const character_id member_id = snapshot_member.npc_id;
         const auto read = std::find_if( member_reads.begin(), member_reads.end(),
         [member_id]( const local_abstract_resume_progress_read & candidate ) {
             return candidate.npc_id == member_id;
@@ -6310,6 +6304,13 @@ std::optional<site_record> local_pair_abstract_resume_progress_candidate( const 
     resume.approach_from = prior_route_position;
     resume.committed_minutes = current_minutes;
     resume.cohesion_best_staging_distances.clear();
+    std::vector<tripoint_abs_ms> staging_positions;
+    for( const auto *read : reads ) {
+        staging_positions.push_back( read->current_position );
+    }
+    std::rotate( staging_positions.begin(), std::next( staging_positions.begin() ),
+                 staging_positions.end() );
+    auto stage = staging_positions.begin();
     for( local_handoff_member_snapshot &snapshot : resume.members ) {
         if( snapshot.dead ) {
             resume.cohesion_best_staging_distances.push_back( 0 );
@@ -6319,20 +6320,15 @@ std::optional<site_record> local_pair_abstract_resume_progress_candidate( const 
         [&snapshot]( const local_abstract_resume_progress_read * candidate_read ) {
             return candidate_read->npc_id == snapshot.npc_id;
         } );
-        const auto partner = std::find_if( reads.begin(), reads.end(),
-        [&snapshot]( const local_abstract_resume_progress_read * candidate_read ) {
-            return candidate_read->npc_id != snapshot.npc_id;
-        } );
-        if( read == reads.end() || ( partner == reads.end() && reads.size() != 1 ) ) {
-            return refuse( "resume_member_or_partner_missing", &next );
+        if( read == reads.end() ) {
+            return refuse( "resume_member_missing", &next );
         }
         snapshot.prior_position = snapshot.exit_position;
         snapshot.entry_position = ( *read )->current_position;
         snapshot.staging_position = forward_destination ?
                                     project_to<coords::ms>( *progressed_omt ) +
                                     ( snapshot.staging_position - project_to<coords::ms>( prior_route_position ) ) :
-                                    partner == reads.end() ? ( *read )->current_position :
-                                    ( *partner )->current_position;
+                                    *stage++;
         snapshot.exit_position = ( *read )->current_position;
         snapshot.hp_percent = ( *read )->hp_percent;
         snapshot.dead = false;
@@ -6597,8 +6593,8 @@ local_alternate_watch_reposition_plan plan_local_pair_alternate_watch_reposition
         outing.local_handoff.cohesion_abort_return ||
         outing.handoff_epoch == std::numeric_limits<int>::max() ||
         current_minutes < outing.last_advanced_minutes ||
-        outing.member_ids.size() != 2 || outing.local_handoff.members.size() != 2 ||
-        member_reads.size() != 2 || !outing.casualty_ids.empty() ||
+        member_reads.size() != outing.member_ids.size() ||
+        !outing.casualty_ids.empty() ||
         !outing.resolved_member_ids.empty() ||
         outing.alternate_watch_kind == structural_watch_kind::none ||
         outing.alternate_watch_shared_route.empty() ) {
@@ -6654,9 +6650,8 @@ local_alternate_watch_reposition_plan plan_local_pair_alternate_watch_reposition
         read_member_ids.push_back( read_iter->npc_id );
         arrival_positions.push_back( read_iter->current_position );
     }
-    if( read_member_ids.size() != 2 || arrival_positions.size() != 2 ||
-        rl_dist( arrival_positions[0], arrival_positions[1] ) >
-        local_pair_cohesion_radius_ms ) {
+    if( read_member_ids.size() != outing.member_ids.size() ||
+        !positions_fit_cohesion_radius( arrival_positions ) ) {
         plan.notes.push_back(
             "alternate watch reposition blocked: arrived pair is incomplete or separated" );
         return plan;
@@ -6945,7 +6940,7 @@ bool structural_direct_arrival_order_is_current(
            simulation_cursor_matches( outing, expected_cursor ) &&
            ( outing.phase == scout_phase::observing || local_departure ) && current_minutes >= 0 &&
            current_minutes >= outing.last_advanced_minutes &&
-           outing.member_ids.size() == 2 && outing.member_ids[0] != outing.member_ids[1] &&
+           !outing.member_ids.empty() &&
            outing.casualty_ids.empty() && outing.resolved_member_ids.empty() &&
            ( !local || ( outing.local_handoff.is_active() &&
                          outing.local_handoff.cohesion_assembled && !outing.local_handoff.cohesion_abort_return ) );
@@ -6978,7 +6973,7 @@ local_handoff_commit_result complete_structural_direct_arrival(
         ( scavenge && ( destination < 1 ||
                        ( outing.phase == scout_phase::observing && outing.waypoint_index == destination &&
                          outing.actor_route_waypoint == destination ) ) ) ||
-        member_reads.size() != 2 ) {
+        member_reads.size() != outing.member_ids.size() ) {
         return local_handoff_commit_result::rejected;
     }
     std::set<character_id> ids;
@@ -6995,8 +6990,9 @@ local_handoff_commit_result complete_structural_direct_arrival(
         }
         positions.push_back( read.current_position );
     }
-    if( positions[0] == positions[1] || ( local &&
-                                          rl_dist( positions[0], positions[1] ) > local_pair_cohesion_radius_ms ) ) {
+    const std::set<tripoint_abs_ms> distinct_positions( positions.begin(), positions.end() );
+    if( distinct_positions.size() != positions.size() ||
+        ( local && !positions_fit_cohesion_radius( positions ) ) ) {
         return local_handoff_commit_result::rejected;
     }
     site_record candidate = site;
@@ -7047,18 +7043,16 @@ local_handoff_commit_result complete_structural_direct_arrival(
             [&member]( const auto & value ) {
                 return value.npc_id == member.npc_id;
             } );
-            const auto partner = std::find_if( member_reads.begin(), member_reads.end(),
-            [&member]( const auto & value ) {
-                return value.npc_id != member.npc_id;
-            } );
-            if( read == member_reads.end() || partner == member_reads.end() ) {
+            if( read == member_reads.end() ) {
                 return local_handoff_commit_result::rejected;
             }
             if( retained_intermediate ) {
                 member.prior_position = member.exit_position;
             }
             member.entry_position = read->current_position;
-            member.staging_position = partner->current_position;
+            const auto next_slot = std::next( read );
+            member.staging_position = ( next_slot == member_reads.end() ?
+                                         member_reads.front() : *next_slot ).current_position;
             member.exit_position = read->current_position;
             member.hp_percent = read->hp_percent;
             if( retained_intermediate ) {
@@ -7129,10 +7123,13 @@ local_handoff_commit_result commit_scout_pair_watch_arrival(
             }
             arrival_positions.emplace( member_id, read->current_position );
         }
-        return matched_ids.size() == 2 && arrival_positions.size() == 2 &&
-               ( outing.owner == simulation_owner::abstract || rl_dist( arrival_positions.begin()->second,
-                       std::next( arrival_positions.begin() )->second ) <=
-                 local_pair_cohesion_radius_ms );
+        std::vector<tripoint_abs_ms> positions;
+        for( const auto &arrival : arrival_positions ) {
+            positions.push_back( arrival.second );
+        }
+        return !matched_ids.empty() && matched_ids.size() == outing.member_ids.size() &&
+               ( outing.owner == simulation_owner::abstract ||
+                 positions_fit_cohesion_radius( positions ) );
     };
     const bool common_state_is_valid =
         outing.kind == outing_kind::structural_sortie && outing.schema_version >= 10 &&
@@ -7142,7 +7139,7 @@ local_handoff_commit_result commit_scout_pair_watch_arrival(
         current_minutes >= outing.last_advanced_minutes &&
         ( outing.phase == scout_phase::observing || initial_departure || intermediate_outbound ) &&
         !outing.alternate_watch_reposition_pending &&
-        outing.member_ids.size() == 2 && member_reads.size() == 2 &&
+        !outing.member_ids.empty() && outing.member_ids.size() == member_reads.size() &&
         outing.casualty_ids.empty() &&
         outing.resolved_member_ids.empty() && destination_waypoint >= 0 &&
         destination_waypoint < static_cast<int>( outing.shared_route.size() ) &&
@@ -7150,8 +7147,7 @@ local_handoff_commit_result commit_scout_pair_watch_arrival(
         outing.selected_watch_omt &&
         structural_watch_shared_route_is_canonical( outing.shared_route, site.anchor,
                 outing.selected_watch_omt, outing.target_footprint ) &&
-        ( local ? outing.local_handoff.members.size() == 2 &&
-          outing.local_handoff.is_active() && outing.local_handoff.cohesion_assembled &&
+        ( local ? outing.local_handoff.is_active() && outing.local_handoff.cohesion_assembled &&
           !outing.local_handoff.cohesion_abort_return :
           ( local_handoff_snapshot_is_empty( outing.local_handoff ) || retained_intermediate ) &&
           crossing_receipt_allows_runtime_progress( outing ) &&
@@ -7216,12 +7212,10 @@ local_handoff_commit_result commit_scout_pair_watch_arrival(
             [&snapshot]( const local_route_arrival_member_read & candidate_read ) {
                 return candidate_read.npc_id == snapshot.npc_id;
             } );
-            const auto partner = std::find_if( arrival_positions.begin(), arrival_positions.end(),
-            [&snapshot]( const auto & arrival ) {
-                return arrival.first != snapshot.npc_id;
-            } );
+            const auto next_slot = std::next( arrival_positions.find( snapshot.npc_id ) );
             snapshot.entry_position = read->current_position;
-            snapshot.staging_position = partner->second;
+            snapshot.staging_position = ( next_slot == arrival_positions.end() ?
+                                          arrival_positions.begin() : next_slot )->second;
             snapshot.exit_position = read->current_position;
             snapshot.hp_percent = read->hp_percent;
             snapshot.dead = false;
@@ -7577,8 +7571,8 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
         outing.schema_version < 7 || outing.owner != simulation_owner::local ||
         !simulation_owner_state_is_consistent( outing ) ||
         !simulation_cursor_matches( outing, expected_cursor ) ||
-        !outing.local_handoff.is_active() || outing.local_handoff.members.size() != 2 ||
-        outing.member_ids.size() != 2 || member_reads.size() != 2 || current_minutes < 0 ||
+        !outing.local_handoff.is_active() ||
+        member_reads.size() != outing.local_handoff.members.size() || current_minutes < 0 ||
         current_minutes < outing.last_advanced_minutes ) {
         plan.notes.push_back( "local cohesion blocked: stale or incomplete local pair" );
         return plan;
@@ -7620,11 +7614,11 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
             return plan;
         }
         read_ids.push_back( read->npc_id );
-        if( !member_snapshot.dead ) {
+        if( !member_snapshot.dead && !outing.member_is_resolved( read->npc_id ) ) {
             living_reads.push_back( &*read );
         }
     }
-    if( read_ids.size() != 2 ) {
+    if( read_ids.size() != member_reads.size() ) {
         plan.notes.push_back( "local cohesion blocked: member reads are not exact" );
         return plan;
     }
@@ -7648,13 +7642,29 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
         plan.leader_id = *replacement;
     }
     snapshot.cohesion_leader_id = plan.leader_id;
+    const auto leader = std::find_if( living_reads.begin(), living_reads.end(), [&]( const auto *read ) {
+        return read->npc_id == plan.leader_id;
+    } );
+    if( living_reads.size() == 2 && leader != living_reads.end() ) {
+        const auto follower = std::find_if( living_reads.begin(), living_reads.end(),
+        [&]( const auto *read ) { return read != *leader; } );
+        plan.follower_id = ( *follower )->npc_id;
+    }
+    std::vector<tripoint_abs_ms> positions;
+    for( const auto *read : living_reads ) {
+        if( read->present ) {
+            positions.push_back( read->current_position );
+        }
+    }
+    const bool all_present = !positions.empty() && positions.size() == living_reads.size();
+    const bool within_radius = all_present && positions_fit_cohesion_radius( positions );
+    const auto at_omt = [&]( const tripoint_abs_omt &omt ) {
+        return all_present && std::all_of( positions.begin(), positions.end(), [&]( const auto &position ) {
+            return project_to<coords::omt>( position ) == omt;
+        } );
+    };
 
-    if( outing.alternate_watch_reposition_pending &&
-        ( living_reads.size() != 2 ||
-    !std::all_of( living_reads.begin(), living_reads.end(), [&]( const auto * read ) {
-    return read->present && project_to<coords::omt>( read->current_position ) ==
-               outing.alternate_watch_omt;
-    } ) ) ) {
+    if( outing.alternate_watch_reposition_pending && !at_omt( outing.alternate_watch_omt ) ) {
         // The already assigned alternate travel owns the approach. Old admission
         // staging must not recapture a member before both reach the new lookout.
         plan.snapshot = std::move( snapshot );
@@ -7664,8 +7674,7 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
     }
 
     if( outing.alternate_watch_reposition_pending ) {
-        const bool arrived_together = rl_dist( living_reads[0]->current_position,
-                                               living_reads[1]->current_position ) <= local_pair_cohesion_radius_ms;
+        const bool arrived_together = within_radius;
         snapshot.cohesion_assembled = arrived_together;
         if( arrived_together ) {
             snapshot.cohesion_deadline_minutes = -1;
@@ -7681,13 +7690,13 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
             if( plan.abort_return ) {
                 snapshot.cohesion_abort_return = true;
                 snapshot.phase = scout_phase::returning_home;
-            } else {
-                const auto *leader = living_reads[0]->npc_id == plan.leader_id ?
-                                     living_reads[0] : living_reads[1];
-                const auto *follower = leader == living_reads[0] ? living_reads[1] : living_reads[0];
-                plan.follower_id = follower->npc_id;
-                plan.movement_orders.emplace_back( follower->npc_id, leader->current_position );
-                plan.reroute_needed = true;
+            } else if( leader != living_reads.end() ) {
+                for( const auto *member : living_reads ) {
+                    if( member != *leader ) {
+                        plan.movement_orders.emplace_back( member->npc_id, ( *leader )->current_position );
+                    }
+                }
+                plan.reroute_needed = !plan.movement_orders.empty();
             }
         }
         // The original admission pose remains custody history. Native movement
@@ -7717,22 +7726,19 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
     }
 
     std::optional<tripoint_abs_omt> homeward_route_stage;
+    // The two-lane rendezvous is the original intact scout formation. Other
+    // rosters retain their actual homeward positions in the shared release below.
     if( snapshot.cohesion_assembled && outing.phase == scout_phase::returning_home &&
-        !outing.assessment.exit_reason.empty() &&
-        living_reads.size() == 2 && living_reads[0]->present && living_reads[1]->present ) {
-        const tripoint_abs_omt first_omt =
-            project_to<coords::omt>( living_reads[0]->current_position );
-        const tripoint_abs_omt second_omt =
-            project_to<coords::omt>( living_reads[1]->current_position );
+        !outing.assessment.exit_reason.empty() && living_reads.size() == 2 &&
+        snapshot.members.size() == living_reads.size() && within_radius ) {
+        const auto first_omt = project_to<coords::omt>( positions.front() );
         const std::optional<int> minimum_target_distance =
             covert_scout_travel_minimum_target_distance( outing );
         const std::optional<int> stage_target_distance =
             target_footprint_watch_distance( first_omt, outing.target_footprint );
-        if( first_omt == second_omt && first_omt != snapshot.route_position &&
+        if( at_omt( first_omt ) && first_omt != snapshot.route_position &&
             !hostile_site_contains_omt( site, first_omt ) &&
             omt_chebyshev_distance( first_omt, site.anchor ) == 1 &&
-            rl_dist( living_reads[0]->current_position,
-                     living_reads[1]->current_position ) <= local_pair_cohesion_radius_ms &&
             minimum_target_distance && stage_target_distance &&
             *stage_target_distance >= *minimum_target_distance ) {
             homeward_route_stage = first_omt;
@@ -7750,51 +7756,21 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
         snapshot.approach_from = prior_route_position;
         snapshot.egress_omt = outing.shared_route.back();
         snapshot.cohesion_assembled = false;
-        for( std::size_t index = 0; index < outing.member_ids.size(); ++index ) {
-            const character_id member_id = outing.member_ids[index];
-            const auto read = std::find_if( living_reads.begin(), living_reads.end(),
-            [member_id]( const local_cohesion_member_read * candidate ) {
-                return candidate->npc_id == member_id;
-            } );
-            const auto member = std::find_if( snapshot.members.begin(), snapshot.members.end(),
-            [member_id]( const local_handoff_member_snapshot & candidate ) {
-                return candidate.npc_id == member_id;
-            } );
-            if( read == living_reads.end() || member == snapshot.members.end() ) {
-                plan.notes.push_back( "local cohesion blocked: route stage lost exact member" );
-                return plan;
-            }
-            member->prior_position = ( *read )->current_position;
-            member->entry_position = ( *read )->current_position;
-            member->staging_position = stage_center +
-                                       pair_offset * static_cast<int>( index );
-            member->exit_position = ( *read )->current_position;
+        for( std::size_t index = 0; index < snapshot.members.size(); ++index ) {
+            auto &member = snapshot.members[index];
+            const auto &position = living_reads[index]->current_position;
+            member.prior_position = position;
+            member.entry_position = position;
+            member.staging_position = stage_center + pair_offset * static_cast<int>( index );
+            member.exit_position = position;
             snapshot.cohesion_best_staging_distances[index] =
-                rl_dist( member->entry_position, member->staging_position );
+                rl_dist( member.entry_position, member.staging_position );
         }
     }
 
-    const local_cohesion_member_read *leader_read = nullptr;
-    bool all_present_on_route = !living_reads.empty();
-    for( const local_cohesion_member_read *read : living_reads ) {
-        if( read->npc_id == plan.leader_id ) {
-            leader_read = read;
-        }
-        all_present_on_route = all_present_on_route && read->present &&
-                               project_to<coords::omt>( read->current_position ) ==
-                               snapshot.route_position;
-    }
-    bool cohesive = all_present_on_route && leader_read != nullptr;
-    if( cohesive ) {
-        for( const local_cohesion_member_read *read : living_reads ) {
-            if( rl_dist( read->current_position, leader_read->current_position ) >
-                local_pair_cohesion_radius_ms ) {
-                cohesive = false;
-                break;
-            }
-        }
-    }
-    if( cohesive && living_reads.size() == 2 ) {
+    const bool cohesive = within_radius && at_omt( snapshot.route_position ) &&
+                          leader != living_reads.end();
+    if( cohesive && living_reads.size() > 1 && living_reads.size() == snapshot.members.size() ) {
         for( const sortie_observation &observation : outing.observations ) {
             bool observer_is_present = false;
             for( const local_cohesion_member_read *read : living_reads ) {
@@ -7821,12 +7797,9 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
                                            snapshot.egress_omt ==
                                            outing.shared_route[static_cast<std::size_t>( outing.waypoint_index + 1 )];
     const bool cohesive_homeward_release = scout_phase_requires_homeward_only( outing.phase ) &&
-                                           living_reads.size() == 2 && living_reads[0]->present && living_reads[1]->present &&
+                                           within_radius &&
                                            ( snapshot.cohesion_assembled ||
-                                                   project_to<coords::omt>( living_reads[0]->current_position ) ==
-                                                   project_to<coords::omt>( living_reads[1]->current_position ) ) &&
-                                           rl_dist( living_reads[0]->current_position,
-                                                   living_reads[1]->current_position ) <= local_pair_cohesion_radius_ms;
+                                             at_omt( project_to<coords::omt>( positions.front() ) ) );
     bool assembled = cohesive;
     if( assembled && !snapshot.cohesion_assembled ) {
         for( const local_cohesion_member_read *read : living_reads ) {
@@ -7928,10 +7901,6 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
             }
             plan.reroute_needed = !plan.movement_orders.empty();
         }
-    }
-    if( living_reads.size() == 2 ) {
-        plan.follower_id = living_reads[0]->npc_id == plan.leader_id ?
-                           living_reads[1]->npc_id : living_reads[0]->npc_id;
     }
     if( !local_handoff_snapshots_equal( snapshot, outing.local_handoff ) ||
         plan.reroute_needed || plan.leader_id != outing.leader_id ||
@@ -8068,8 +8037,7 @@ bool claim_local_pair_site_ownership( const site_record &site,
     }
     if( site.retired_empty_site || outing.schema_version < 7 ||
         !simulation_owner_state_is_consistent( outing ) ||
-        !outing.local_handoff.is_active() || outing.local_handoff.members.size() != 2 ||
-        outing.member_ids.size() != 2 ) {
+        !outing.local_handoff.is_active() ) {
         return false;
     }
 
@@ -8094,11 +8062,11 @@ bool local_pair_initial_departure_is_bound( const active_outing_state &outing )
            outing.owner == simulation_owner::local && outing.phase == scout_phase::outbound &&
            physical_route &&
            outing.waypoint_index == 0 && outing.actor_route_waypoint <= 0 &&
-           !outing.actor_departure_observed && outing.member_ids.size() == 2 &&
+           !outing.actor_departure_observed && !outing.member_ids.empty() &&
            outing.casualty_ids.empty() && outing.resolved_member_ids.empty() &&
            outing.local_handoff.is_active() &&
            !outing.local_handoff.has_intermediate_route_position() &&
-           outing.local_handoff.phase == outing.phase && outing.local_handoff.members.size() == 2 &&
+           outing.local_handoff.phase == outing.phase &&
            outing.local_handoff.waypoint_index == 0 &&
            outing.local_handoff.route_position == outing.shared_route.front() &&
            outing.local_handoff.egress_omt == outing.shared_route[1];
@@ -8114,8 +8082,7 @@ std::map<character_id, tripoint_abs_ms> local_pair_assembly_orders(
         !outing.local_handoff.is_active() ||
         scout_phase_requires_homeward_only( outing.phase ) ||
         outing.alternate_watch_reposition_pending ||
-        outing.local_handoff.cohesion_abort_return ||
-        outing.local_handoff.members.size() != 2 || outing.member_ids.size() != 2 ) {
+        outing.local_handoff.cohesion_abort_return ) {
         return result;
     }
     const int destination_waypoint = structural_outing_destination_waypoint( outing );
@@ -8188,21 +8155,20 @@ std::set<character_id> local_pair_homeward_travel_ids( const world_state &state 
             continue;
         }
         if( outing.kind == outing_kind::scout_sortie ) {
-            if( outing.member_ids.size() != 2 ) {
-                continue;
-            }
-            const bool complete_unresolved_pair = std::all_of(
+            const bool disjoint_roster = std::all_of(
                     outing.member_ids.begin(), outing.member_ids.end(),
             [&outing, &claimed_members, &blocked_members]( const character_id member_id ) {
-                return !outing.member_is_resolved( member_id ) &&
-                       claimed_members.count( member_id ) == 0 &&
-                       blocked_members.count( member_id ) == 0;
+                return outing.member_is_resolved( member_id ) ||
+                       ( claimed_members.count( member_id ) == 0 &&
+                         blocked_members.count( member_id ) == 0 );
             } );
-            if( !complete_unresolved_pair ) {
+            if( !disjoint_roster ) {
                 continue;
             }
             for( const character_id member_id : outing.member_ids ) {
-                result.insert( member_id );
+                if( !outing.member_is_resolved( member_id ) ) {
+                    result.insert( member_id );
+                }
             }
             continue;
         }
@@ -10298,7 +10264,7 @@ bool local_handoff_snapshot::is_active() const
     return schema_version >= 1 && schema_version <= 6 && !activity_id.empty() &&
            activity_generation > 0 &&
            handoff_epoch > 0 && handoff_epoch % 2 == 1 && committed_minutes >= 0 &&
-           !members.empty() && members.size() <= 2;
+           !members.empty();
 }
 
 bool local_handoff_snapshot::is_abstract_resume() const
@@ -10313,7 +10279,7 @@ bool local_handoff_snapshot::is_abstract_resume() const
     }
     return schema_version >= 2 && schema_version <= 6 && !activity_id.empty() &&
            handoff_epoch > 0 && handoff_epoch % 2 == 0 && committed_minutes >= 0 &&
-           members.size() == 2;
+           !members.empty();
 }
 
 void local_handoff_snapshot::serialize( JsonOut &json ) const
@@ -10382,14 +10348,8 @@ void local_handoff_snapshot::deserialize( const JsonObject &jo )
             jo.throw_error( "local handoff snapshot has duplicate casualty identity" );
         }
         candidate.casualty_ids.push_back( casualty_id );
-        if( candidate.casualty_ids.size() > 2 ) {
-            jo.throw_error( "local handoff snapshot exceeds its casualty bound" );
-        }
     }
     jo.read( "members", candidate.members );
-    if( candidate.members.size() > 2 ) {
-        jo.throw_error( "local handoff snapshot exceeds its member bound" );
-    }
     if( candidate.schema_version >= 3 ) {
         int raw_cohesion_leader_id = -1;
         jo.read( "cohesion_leader_id", raw_cohesion_leader_id );
@@ -10579,10 +10539,9 @@ void scout_report_record::serialize( JsonOut &json ) const
     json.member( "observations", make_bounded_sortie_observations( observations, receipts ) );
     json.member( "assessment", assessment );
     std::vector<int> raw_casualty_ids;
-    raw_casualty_ids.reserve( std::min( casualty_ids.size(), max_active_outing_casualties ) );
-    for( std::size_t index = 0; index < casualty_ids.size() &&
-         index < max_active_outing_casualties; ++index ) {
-        raw_casualty_ids.push_back( casualty_ids[index].get_value() );
+    raw_casualty_ids.reserve( casualty_ids.size() );
+    for( const character_id id : casualty_ids ) {
+        raw_casualty_ids.push_back( id.get_value() );
     }
     json.member( "casualty_ids", raw_casualty_ids );
     json.member( "delivered_minutes", std::max( -1, delivered_minutes ) );
@@ -10645,9 +10604,6 @@ void scout_report_record::deserialize( const JsonObject &jo )
         if( std::find( candidate.casualty_ids.begin(), candidate.casualty_ids.end(), casualty_id ) ==
             candidate.casualty_ids.end() ) {
             candidate.casualty_ids.push_back( casualty_id );
-        }
-        if( candidate.casualty_ids.size() >= max_active_outing_casualties ) {
-            break;
         }
     }
     jo.read( "delivered_minutes", candidate.delivered_minutes );
@@ -11447,18 +11403,15 @@ void active_outing_state::serialize( JsonOut &json ) const
     json.member( "observations", make_bounded_sortie_observations( observations ) );
     json.member( "cargo", cargo );
     std::vector<int> raw_casualty_ids;
-    raw_casualty_ids.reserve( std::min( casualty_ids.size(), max_active_outing_casualties ) );
-    for( std::size_t index = 0; index < casualty_ids.size() &&
-         index < max_active_outing_casualties; ++index ) {
-        raw_casualty_ids.push_back( casualty_ids[index].get_value() );
+    raw_casualty_ids.reserve( casualty_ids.size() );
+    for( const character_id id : casualty_ids ) {
+        raw_casualty_ids.push_back( id.get_value() );
     }
     json.member( "casualty_ids", raw_casualty_ids );
     std::vector<int> raw_resolved_member_ids;
-    raw_resolved_member_ids.reserve( std::min( resolved_member_ids.size(),
-                                     max_active_outing_members ) );
-    for( std::size_t index = 0; index < resolved_member_ids.size() &&
-         index < max_active_outing_members; ++index ) {
-        raw_resolved_member_ids.push_back( resolved_member_ids[index].get_value() );
+    raw_resolved_member_ids.reserve( resolved_member_ids.size() );
+    for( const character_id id : resolved_member_ids ) {
+        raw_resolved_member_ids.push_back( id.get_value() );
     }
     json.member( "resolved_member_ids", raw_resolved_member_ids );
     json.member( "started_minutes", std::max( -1, started_minutes ) );
@@ -11642,9 +11595,6 @@ void active_outing_state::deserialize( const JsonObject &jo )
             candidate.casualty_ids.end() ) {
             candidate.casualty_ids.push_back( casualty_id );
         }
-        if( candidate.casualty_ids.size() >= max_active_outing_casualties ) {
-            break;
-        }
     }
     std::vector<int> raw_resolved_member_ids;
     jo.read( "resolved_member_ids", raw_resolved_member_ids );
@@ -11656,9 +11606,6 @@ void active_outing_state::deserialize( const JsonObject &jo )
             std::find( candidate.resolved_member_ids.begin(), candidate.resolved_member_ids.end(),
                        resolved_member_id ) == candidate.resolved_member_ids.end() ) {
             candidate.resolved_member_ids.push_back( resolved_member_id );
-        }
-        if( candidate.resolved_member_ids.size() >= max_active_outing_members ) {
-            break;
         }
     }
     for( const character_id &casualty_id : candidate.casualty_ids ) {
@@ -13178,7 +13125,7 @@ void site_record::deserialize( const JsonObject &jo,
         active_outing.kind != outing_kind::structural_sortie ||
         ( active_outing.activity_id == site_id + "#structural" &&
           ( active_outing.job_type == "scout" || active_outing.job_type == "scavenge" ) &&
-          active_outing.member_ids.size() == 2 &&
+          !active_outing.member_ids.empty() &&
           ( active_outing.schema_version == 6 || active_outing.schema_version == 7 ||
             active_outing.schema_version == 8 || active_outing.schema_version == 9 ||
             active_outing.schema_version >= 10 ) &&
@@ -13240,8 +13187,7 @@ void site_record::deserialize( const JsonObject &jo,
                                          ( active_outing.generation == applied_report_generation &&
                                            active_report_generation_is_current ) ) &&
                                        simulation_owner_state_is_consistent( owner_fields_for_load ) &&
-                                       !active_outing.member_ids.empty() &&
-                                       active_outing.member_ids.size() <= max_active_outing_members;
+                                       !active_outing.member_ids.empty();
     std::vector<character_id> checked_active_member_ids;
     checked_active_member_ids.reserve( active_outing.member_ids.size() );
     for( const character_id &member_id : active_outing.member_ids ) {
@@ -13338,10 +13284,6 @@ void site_record::deserialize( const JsonObject &jo,
                                            hostile_reservation.generation > applied_return_generation &&
                                            hostile_reservation.generation > applied_cargo_generation &&
                                            !hostile_reservation.member_ids.empty() &&
-                                           ( legacy_withdrawal_only ?
-                                                   hostile_reservation.member_ids.size() <= max_active_outing_members :
-                                                   hostile_reservation.member_ids.size() >= 2 &&
-                                                   hostile_reservation.member_ids.size() <= max_hostile_operation_members ) &&
                                            hostile_reservation.shared_route.size() <= max_active_outing_route_steps &&
                                            hostile_route_is_consistent && hostile_job_is_consistent &&
                                            hostile_report_is_consistent && hostile_identity_is_consistent &&
@@ -14120,7 +14062,7 @@ bool acknowledged_roof_pair_consumes_old_leases(
     const active_outing_state *outing = site.active_external_outing();
     if( outing == nullptr || outing->kind != outing_kind::structural_sortie ||
         outing->schema_version < 10 || outing->owner != simulation_owner::abstract ||
-        outing->phase != scout_phase::observing || outing->member_ids.size() != 2 ||
+        outing->phase != scout_phase::observing || outing->member_ids.empty() ||
         !outing->casualty_ids.empty() || !outing->resolved_member_ids.empty() ||
         outing->selected_watch_kind != structural_watch_kind::exact ||
         outing->waypoint_index != structural_outing_destination_waypoint( *outing ) ||
@@ -14197,7 +14139,7 @@ bool acknowledged_local_handoff_attests_clock( const site_record &site,
     const active_outing_state *outing = site.active_external_outing();
     if( outing == nullptr || !outing->is_active() ||
         outing->kind != outing_kind::structural_sortie || outing->schema_version != 11 ||
-        outing->owner != simulation_owner::local || outing->member_ids.size() != 2 ||
+        outing->owner != simulation_owner::local || outing->member_ids.empty() ||
         !outing->casualty_ids.empty() || !outing->resolved_member_ids.empty() ||
         claims.size() != outing->member_ids.size() || !outing->local_handoff.is_active() ||
         !outing->crossing.persistence_acknowledged || outing->crossing.outcome != "committed" ||
@@ -14438,8 +14380,8 @@ local_projection_reconciliation_result reconcile_loaded_local_projections_candid
         const bool local_claims_match = outing->owner == simulation_owner::local &&
                                         outing->crossing.prior_owner == simulation_owner::abstract &&
                                         std::all_of( outing->member_ids.begin(), outing->member_ids.end(),
-        [&claimed_ids]( const character_id id ) {
-            return claimed_ids.count( id ) > 0;
+        [&claimed_ids, outing]( const character_id id ) {
+            return outing->member_is_resolved( id ) || claimed_ids.count( id ) > 0;
         } );
         const bool abstract_claims_match = outing->owner == simulation_owner::abstract &&
                                            outing->crossing.prior_owner == simulation_owner::local &&
@@ -16196,7 +16138,7 @@ int normalize_hostile_camp_character_power( const float deterministic_character_
 
 int hostile_response_home_reserve( const int living_total )
 {
-    return std::max( 1, ( std::max( 0, living_total ) + 2 ) / 3 );
+    return std::max( 1, living_total / 3 + ( living_total % 3 > 0 ? 1 : 0 ) );
 }
 
 int response_home_rally_allowance_turns( const tripoint_abs_omt &home,
@@ -16221,8 +16163,15 @@ int hostile_response_materialization_count( const site_record &site,
     }
 
     const int reserve = hostile_response_home_reserve( roster.living_total );
+    const auto &report = site.current_scout_report;
+    const auto power = evaluate_response_party_power( report.action_policy,
+                       report.assessment.danger_high, { 1 } );
+    // Preserve the ordinary materialization budget for low danger. When more
+    // power is required, even a home roster of the weakest ready bodies can
+    // supply the response and the reserve if sufficient people are available.
+    constexpr int ordinary_response_candidates = 6;
     const int concrete_goal = std::min( roster.living_total,
-                                        static_cast<int>( max_hostile_operation_members ) + reserve );
+                                        std::max( ordinary_response_candidates, power.required_power ) + reserve );
     return std::min( roster.unmaterialized_home_total,
                      std::max( 0, concrete_goal - ready_concrete_source_members ) );
 }
@@ -16245,25 +16194,23 @@ response_power_evaluation evaluate_response_party_power(
     }
     if( margin_percent == 0 || danger_high < 0 || danger_high > 200 ||
         normalized_member_powers.empty() ||
-        normalized_member_powers.size() > 6 || std::any_of(
-            normalized_member_powers.begin(), normalized_member_powers.end(),
+        std::any_of( normalized_member_powers.begin(), normalized_member_powers.end(),
     []( const int power ) {
     return power < 1 || power > 10;
 } ) ) {
         return result;
     }
 
-    int party_power = 0;
-    for( const int power : normalized_member_powers ) {
-        party_power += power;
-    }
+    const std::int64_t party_power = std::accumulate( normalized_member_powers.begin(),
+                                     normalized_member_powers.end(), std::int64_t{ 0 } );
     const int scaled_required_power = margin_percent * danger_high;
     result.valid = true;
     result.target_power = danger_high;
     result.margin_percent = margin_percent;
-    result.party_power = party_power;
+    result.party_power = static_cast<int>( std::min<std::int64_t>( party_power,
+                         std::numeric_limits<int>::max() ) );
     result.required_power = ( scaled_required_power + 99 ) / 100;
-    result.clears_margin = 100 * party_power >= scaled_required_power;
+    result.clears_margin = party_power >= result.required_power;
     return result;
 }
 
@@ -16272,7 +16219,8 @@ response_party_selection_result select_capable_response_party(
     const std::vector<response_member_power_read> &member_reads )
 {
     response_party_selection_result result;
-    if( !evaluate_response_party_power( policy, danger_high, { 1 } ).valid ) {
+    const auto power_requirement = evaluate_response_party_power( policy, danger_high, { 1 } );
+    if( !power_requirement.valid ) {
         result.rejection_reason = "invalid response power policy or target";
         return result;
     }
@@ -16326,22 +16274,17 @@ response_party_selection_result select_capable_response_party(
     const int preferred_reserve = hostile_response_home_reserve( roster.living_total );
     for( const int reserve : { preferred_reserve, 0 } ) {
         result.required_local_reserve = reserve;
-        const int maximum_party_size = std::min( 6,
-                                       static_cast<int>( capable_members.size() ) - reserve );
-        for( int party_size = 2; party_size <= maximum_party_size; ++party_size ) {
-            std::vector<int> powers;
-            powers.reserve( party_size );
-            for( int index = 0; index < party_size; ++index ) {
-                powers.push_back( capable_members[index].power );
-            }
-            const response_power_evaluation evaluation = evaluate_response_party_power(
-                        policy, danger_high, powers );
-            if( !evaluation.valid || !evaluation.clears_margin ) {
+        const int maximum_party_size = static_cast<int>( capable_members.size() ) - reserve;
+        int party_power = 0;
+        for( int index = 0; index < maximum_party_size; ++index ) {
+            party_power += capable_members[index].power;
+            const int party_size = index + 1;
+            if( party_size < 2 || party_power < power_requirement.required_power ) {
                 continue;
             }
             result.party_size = party_size;
-            result.party_power = evaluation.party_power;
-            result.required_power = evaluation.required_power;
+            result.party_power = party_power;
+            result.required_power = power_requirement.required_power;
             for( int index = 0; index < party_size; ++index ) {
                 result.member_ids.push_back( capable_members[index].npc_id );
             }
@@ -16356,7 +16299,7 @@ response_party_selection_result select_capable_response_party(
     // successful response decision, never a global site-policy mutation.
     result.required_local_reserve = preferred_reserve;
 
-    result.rejection_reason = "no bounded response party clears the faction power margin";
+    result.rejection_reason = "no ready response party clears the faction power margin";
     return result;
 }
 
@@ -16506,7 +16449,7 @@ response_authorization_evaluation evaluate_response_authorization(
     const response_power_evaluation expected_power = evaluate_response_party_power(
                 policy, effective.danger_high, { 1 } );
     if( fresh_selection.job != expected_job || fresh_selection.party_size < 2 ||
-        fresh_selection.party_size > 6 || !expected_power.valid ||
+        !expected_power.valid ||
         fresh_selection.required_power != expected_power.required_power ) {
         result.rejection_reason = "selected response party is malformed or stale";
         return result;
@@ -16516,8 +16459,7 @@ response_authorization_evaluation evaluate_response_authorization(
     result.reserve_ready = true;
     result.party_power = fresh_selection.party_power;
     result.required_power = expected_power.required_power;
-    result.power_sufficient = 100 * result.party_power >=
-                              expected_power.margin_percent * effective.danger_high;
+    result.power_sufficient = result.party_power >= result.required_power;
     const auto remembered_place = std::find_if( site.intelligence_map.robbery_places.begin(),
                                   site.intelligence_map.robbery_places.end(),
     [&]( const robbery_place_memory & place ) {
@@ -18196,8 +18138,7 @@ bool structural_local_zombie_read_is_valid( const site_record &site,
            simulation_owner_state_is_consistent( outing ) &&
            simulation_cursor_matches( outing, expected_cursor ) &&
            expected_cursor.owner == simulation_owner::local &&
-           outing.local_handoff.is_active() && outing.local_handoff.members.size() == 2 &&
-           outing.member_ids.size() == 2 && read.source_omt == outing.local_handoff.route_position &&
+           outing.local_handoff.is_active() && read.source_omt == outing.local_handoff.route_position &&
            lead != nullptr && lead->revision == outing.target_lead_revision &&
            lead->omt == outing.target_omt &&
            std::find( outing.shared_route.begin(), outing.shared_route.end(), read.source_omt ) !=
@@ -18780,7 +18721,7 @@ abstract_threat_resolution resolve_structural_abstract_threat( site_record &site
     }
     // Sharing an OMT is not combat. Preserve member/body custody; an
     // impassable dangerous route causes withdrawal, not invented attrition.
-    if( surviving_members.size() != 2 || !begin_homeward_return() ) {
+    if( surviving_members.empty() || !begin_homeward_return() ) {
         return abstract_threat_resolution();
     }
     encounter.outcome_applied = true;
@@ -20002,7 +19943,6 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         plan.generation <= 0 || plan.generation != site.next_outing_generation ||
         plan.lead_id.empty() ||
         plan.lead_revision <= 0 || plan.member_ids.empty() ||
-        plan.member_ids.size() > max_active_outing_members ||
         !route_is_canonical ||
         ( !has_watch_route &&
           travel_destination != plan.shared_route[plan.shared_route.size() - 2] ) ||
@@ -20428,7 +20368,7 @@ bool make_static_structural_observer_request( const site_record &site,
     if( outing.kind != outing_kind::structural_sortie || outing.schema_version < 8 ||
         outing.activity_id != site.site_id + "#structural" || outing.target_id.empty() ||
         outing.target_id != outing.target_lead_id || outing.target_lead_revision <= 0 ||
-        outing.member_ids.size() != 2 ||
+        outing.member_ids.empty() ||
         ( outing.phase != scout_phase::outbound && outing.phase != scout_phase::observing ) ||
         outing.shared_route.size() < 3 || outing.waypoint_index < 0 ||
         static_cast<std::size_t>( outing.waypoint_index ) >= outing.shared_route.size() - 1 ) {
@@ -21516,7 +21456,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state,
             site.active_outing.activity_id != site.site_id + "#structural" ||
             site.active_outing.target_id.empty() ||
             site.active_outing.target_id != site.active_outing.target_lead_id ||
-            site.active_outing.member_ids.size() != 2 ||
+            site.active_outing.member_ids.empty() ||
             site.active_outing.started_minutes < 0 ) {
             trace_structural_outing( site, "outing_shape", "valid=0" );
             continue;
@@ -24450,7 +24390,6 @@ static bool authorized_response_selection_is_current( const site_record &site,
             site.current_scout_report.assessment.danger_high, { 1 } );
     if( !selection.eligible || policy == camp_report_policy::none ||
         selection.job != expected_job || selection.party_size < 2 ||
-        selection.party_size > static_cast<int>( max_hostile_operation_members ) ||
         selection.party_size != static_cast<int>( selection.member_ids.size() ) ||
         ( selection.required_local_reserve != 0 &&
           selection.required_local_reserve != hostile_response_home_reserve(
@@ -24832,7 +24771,6 @@ bool apply_hostile_operation_plan( site_record &site, const hostile_operation_pl
         reservation.generation != site.next_outing_generation ||
         !selection.eligible || reservation.member_ids != selection.member_ids ||
         reservation.member_ids.size() < 2 ||
-        reservation.member_ids.size() > max_hostile_operation_members ||
         !hostile_operation_party_preserves_home( site, reservation.member_ids.size() ) ||
         reservation.shared_route.size() < 2 ||
         reservation.shared_route.size() > max_active_outing_route_steps ||
@@ -25098,7 +25036,6 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
     if( !plan.valid || !referenced_lead_is_current || !routine_party_size_is_valid ||
         plan.entry.job_type != bandit_dry_run::job_template::scout ||
         plan.site_id != site.site_id || plan.member_ids.empty() ||
-        plan.member_ids.size() > max_active_outing_members ||
         !camp_decision_allows_dispatch( site.camp_decision, plan.entry.job_type ) ||
         site.has_active_outside_pressure() ||
         plan.group.activity_generation != site.next_outing_generation ||
@@ -25988,7 +25925,7 @@ bool local_elevated_signal_watch_recovery_needed( const site_record &site )
            outing.schema_version == 9 && outing.owner == simulation_owner::local &&
            outing.phase == scout_phase::observing && outing.job_type == "scout" &&
            outing.selected_watch_kind == structural_watch_kind::none &&
-           outing.member_ids.size() == 2 && outing.casualty_ids.empty() &&
+           !outing.member_ids.empty() && outing.casualty_ids.empty() &&
            outing.resolved_member_ids.empty() && outing.observations.empty() &&
            outing.assessment.observation_started_minutes < 0 &&
            outing.target_omt.z() > site.anchor.z() &&
@@ -26001,7 +25938,7 @@ bool local_elevated_signal_watch_recovery_needed( const site_record &site )
            outing.local_handoff.phase == scout_phase::observing &&
            outing.local_handoff.cohesion_assembled &&
            !outing.local_handoff.cohesion_abort_return &&
-           outing.local_handoff.members.size() == 2 &&
+           outing.local_handoff.members.size() == outing.member_ids.size() &&
            outing.local_handoff.route_position == outing.shared_route[1] &&
            outing.local_handoff.egress_omt == physical_target &&
            lead != nullptr &&returned_structural_signal_lead( *lead ) &&
@@ -26040,6 +25977,7 @@ structural_watch_route_apply_result recover_local_elevated_signal_watch(
         outing.local_handoff.route_position == selection.omt ) {
         return structural_watch_route_apply_result::rejected;
     }
+    std::vector<tripoint_abs_ms> recovered_positions;
     for( std::size_t index = 0; index < member_reads.size(); ++index ) {
         const local_route_arrival_member_read &read_member = member_reads[index];
         if( read_member.npc_id != outing.member_ids[index] || !read_member.readable ||
@@ -26047,12 +25985,14 @@ structural_watch_route_apply_result recover_local_elevated_signal_watch(
             project_to<coords::omt>( read_member.current_position ) !=
             read.watch_shared_route[1] ||
             outing.local_handoff.members[index].npc_id != read_member.npc_id ||
-            outing.local_handoff.members[index].dead ) {
+            outing.local_handoff.members[index].dead ||
+            std::find( recovered_positions.begin(), recovered_positions.end(),
+                       read_member.current_position ) != recovered_positions.end() ) {
             return structural_watch_route_apply_result::rejected;
         }
+        recovered_positions.push_back( read_member.current_position );
     }
-    if( rl_dist( member_reads[0].current_position,
-                 member_reads[1].current_position ) > local_pair_cohesion_radius_ms ) {
+    if( !positions_fit_cohesion_radius( recovered_positions ) ) {
         return structural_watch_route_apply_result::rejected;
     }
 
@@ -26071,7 +26011,7 @@ structural_watch_route_apply_result recover_local_elevated_signal_watch(
     next.local_handoff.egress_omt = selection.omt;
     next.local_handoff.committed_minutes = current_minutes;
     next.local_handoff.cohesion_assembled = true;
-    next.local_handoff.cohesion_best_staging_distances.assign( 2, 0 );
+    next.local_handoff.cohesion_best_staging_distances.assign( member_reads.size(), 0 );
     for( std::size_t index = 0; index < member_reads.size(); ++index ) {
         next.local_handoff.members[index].staging_position =
             member_reads[index].current_position;
@@ -28725,13 +28665,12 @@ static std::optional<covert_scout_relationship_read> read_active_covert_scout_me
             const bool complete = std::all_of( outing.member_ids.begin(), outing.member_ids.end(),
             [&site, &outing, &homeward]( const character_id id ) {
                 const member_record *member = site.find_member( id );
-                return homeward.count( id ) != 0 && member != nullptr &&
-                       ( member->state == member_state::outbound ||
-                         member->state == member_state::local_contact ) &&
-                       std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), id ) ==
-                       outing.casualty_ids.end();
+                return outing.member_is_resolved( id ) ||
+                       ( homeward.count( id ) != 0 && member != nullptr &&
+                         ( member->state == member_state::outbound ||
+                           member->state == member_state::local_contact ) );
             } );
-            if( result || !complete || outing.member_ids.size() != 2 ) {
+            if( result || !complete ) {
                 return std::nullopt;
             }
             result = covert_scout_relationship_read{
@@ -28752,9 +28691,8 @@ static std::optional<covert_scout_relationship_read> read_active_covert_scout_me
         }
         if( site.retired_empty_site ||
             ( outing.schema_version < 10 && !structural_outing_uses_frontier_route( outing ) ) ||
-            outing.member_ids.size() != 2 ||
             !simulation_owner_state_is_consistent( outing ) ||
-            !outing.local_handoff.is_active() || outing.local_handoff.members.size() != 2 ||
+            !outing.local_handoff.is_active() ||
             !accepted_phase( outing ) || outing.local_handoff.phase != outing.phase ||
             outing.member_is_resolved( npc_id ) ||
             std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), npc_id ) !=
@@ -29117,8 +29055,7 @@ static covert_scout_burn_effect apply_covert_scout_burn_impl(
         outing.owner != simulation_owner::local || outing.phase != scout_phase::observing ||
         outing.local_handoff.phase != outing.phase || !outing.local_handoff.is_active() ||
         !outing.local_handoff.cohesion_assembled ||
-        outing.local_handoff.cohesion_abort_return || outing.member_ids.size() != 2 ||
-        outing.local_handoff.members.size() != 2 || outing.target_footprint.empty() ||
+        outing.local_handoff.cohesion_abort_return || outing.target_footprint.empty() ||
         outing.selected_watch_kind == structural_watch_kind::none ||
         outing.waypoint_index != 2 || outing.local_handoff.waypoint_index != 2 ||
         !structural_watch_shared_route_is_canonical(
@@ -29871,7 +29808,7 @@ bool covert_scout_party_cleared_target_acquire_range(
     const std::vector<covert_scout_member_acquire_read> &member_reads )
 {
     if( outing.kind != outing_kind::structural_sortie || outing.schema_version < 10 ||
-        outing.target_footprint.empty() || outing.member_ids.size() != 2 ) {
+        outing.target_footprint.empty() || outing.member_ids.empty() ) {
         return false;
     }
 

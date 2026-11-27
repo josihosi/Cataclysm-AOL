@@ -22,6 +22,7 @@ set(CataAnalyzerSrc
         NoStaticTranslationCheck.cpp
         ObservationCostCheck.cpp
         OtMatchCheck.cpp
+        OvermapPartyRosterCheck.cpp
         PointInitializationCheck.cpp
         RedundantParenthesesCheck.cpp
         SerializeCheck.cpp

@@ -246,8 +246,7 @@ reconcile_loaded_bandit_live_world_projections()
         }
         if( outing == nullptr || outing->kind != bandit_live_world::outing_kind::structural_sortie ||
             outing->owner != bandit_live_world::simulation_owner::local ||
-            !outing->local_handoff.is_active() || outing->member_ids.size() != 2 ||
-            outing->local_handoff.members.size() != outing->member_ids.size() ||
+            !outing->local_handoff.is_active() ||
             !site.roster().valid || !bandit_live_world::current_external_simulation_cursor( site ) ) {
             continue;
         }
