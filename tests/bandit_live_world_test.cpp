@@ -71847,6 +71847,230 @@ TEST_CASE( "three of seven issued responders enter physically before a mixed-own
     CHECK( scene.site().active_hostile_operation.reservation.generation == generation );
 }
 
+TEST_CASE( "issued human responders cross the reality boundary and reload at every size",
+           "[bandit_live_world][hostile_operation][mission_roster_round_trip]" )
+{
+    using namespace bandit_live_world;
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    const int count = GENERATE( 1, 2, 3, 4, 5, 6, 7 );
+    const std::string case_name = count == 6 ? "six issued actors all start local" :
+                                  std::to_string( count ) + " issued or surviving actors";
+    DYNAMIC_SECTION( case_name ) {
+        const auto prior_observer = get_avatar().pos_abs();
+        on_out_of_scope restore_observer( [prior_observer]() {
+            g->place_player_overmap( project_to<coords::omt>( prior_observer ), false );
+            get_avatar().setpos( prior_observer, false );
+        } );
+        REQUIRE( g->place_player_overmap( tripoint_abs_omt::zero, false ) );
+        get_avatar().setpos( tripoint_abs_ms::zero, false );
+        rng_set_engine_seed( 187112973U );
+        const int danger = ( std::max( count, 2 ) - 1 ) * 20 / 3 + 1;
+        r066_visit_scene scene( true, true, "", true, false, danger );
+        wipe_map_terrain();
+        get_avatar().set_mutation( trait_id( "DEBUG_CLOAK" ) );
+        on_out_of_scope restore_cloak( []() {
+            get_avatar().unset_mutation( trait_id( "DEBUG_CLOAK" ) );
+        } );
+
+        const auto issued = scene.site().active_hostile_operation.reservation.member_ids;
+        REQUIRE( issued.size() == static_cast<std::size_t>( std::max( 2, count ) ) );
+        const auto activity = scene.site().active_hostile_operation.reservation.activity_id;
+        const auto generation = scene.site().active_hostile_operation.reservation.generation;
+        const auto goal = scene.site().active_hostile_operation.reservation.shared_route.back();
+        auto living = issued;
+        if( count == 1 ) {
+            const auto casualty = overmap_buffer.find_npc( issued.back() );
+            REQUIRE( casualty );
+            casualty->die( &get_map(), nullptr );
+            g->cleanup_dead();
+            REQUIRE_FALSE( overmap_buffer.find_npc( issued.back() ) );
+            living.pop_back();
+        }
+
+        // Qualify an open east edge and place the observer one walk from
+        // rolling the next column of submaps into the reality bubble.
+        map &here = get_map();
+        get_avatar().setpos( here, tripoint_bub_ms( HALF_MAPSIZE_X + SEEX - 1,
+                             HALF_MAPSIZE_Y + 1, here.get_abs_sub().z() ) );
+        const auto observer_start = get_avatar().pos_abs();
+        const auto origin = here.get_abs_sub();
+        for( int x = 0; x <= 20; ++x ) {
+            for( int y = -2; y <= 2; ++y ) {
+                overmap_buffer.ter_set( get_avatar().pos_abs_omt() + point( x, y ), oter_id( "field" ) );
+            }
+        }
+        std::map<character_id, tripoint_abs_ms> inside;
+        for( std::size_t index = 0; index < living.size(); ++index ) {
+            const auto id = living[index];
+            const auto actor = overmap_buffer.find_npc( id );
+            REQUIRE( actor );
+            const tripoint_bub_ms edge( here.getmapsize() * SEEX - 1,
+                                        43 + 6 * static_cast<int>( index ), origin.z() );
+            const auto start = here.get_abs( edge );
+            const auto exit = start + point::east;
+            if( !MAPBUFFER.lookup_submap_existing( project_to<coords::sm>( exit ) ) ) {
+                physical_navigation::step_read needed;
+                needed.position = start;
+                needed.missing_geometry = exit;
+                REQUIRE( physical_navigation::acquire_movement_geometry( start, needed ) );
+            }
+            // Separate lanes leave one legal outward square per actor.
+            tinymap adjacent;
+            adjacent.load( project_to<coords::omt>( exit ), false );
+            const auto tile = project_remain<coords::omt>( exit ).remainder_tripoint;
+            for( const point lateral : { point::north, point::zero, point::south } ) {
+                const auto lane = tile + lateral;
+                REQUIRE( adjacent.inbounds( lane ) );
+                adjacent.ter_set( lane, lateral == point::zero ? ter_str_id( "t_grass" ) :
+                                  ter_str_id( "t_rock" ) );
+                adjacent.furn_set( lane, furn_str_id::NULL_ID() );
+            }
+            actor->spawn_at_precise( start );
+            actor->set_speed_base( 100 );
+            actor->goal = npc::no_goal_point;
+            actor->omt_path.clear();
+            actor->set_mission( NPC_MISSION_NULL );
+            inside.emplace( id, start );
+        }
+        g->load_npcs();
+        refresh_live_bandit_activation();
+        // The first owner tick may record the singleton's casualty before
+        // issuing its surviving member's movement order on the next tick.
+        for( int tick = 0; tick < 2; ++tick ) {
+            calendar::turn += 1_minutes;
+            refresh_live_bandit_activation();
+            advance_live_bandit_hostile_approaches_for_test();
+        }
+
+        const auto check_boundary = [&]( const std::string &label,
+        const std::map<character_id, tripoint_abs_ms> &positions, const bool local ) {
+            CAPTURE( count, label );
+            const auto &operation = scene.site().active_hostile_operation;
+            CHECK( operation.phase == hostile_operation_phase::approaching );
+            CHECK( operation.reservation.member_ids == issued );
+            CHECK( operation.reservation.activity_id == activity );
+            CHECK( operation.reservation.generation == generation );
+            CHECK( operation.reservation.casualty_ids ==
+                   ( count == 1 ? std::vector<character_id> { issued.back() } : std::vector<character_id>() ) );
+            std::set<tripoint_abs_ms> distinct_squares;
+            for( const character_id id : living ) {
+                const auto actor = overmap_buffer.find_npc( id );
+                REQUIRE( actor );
+                const auto square = positions.at( id );
+                CAPTURE( id.get_value(), square, actor->pos_abs() );
+                CHECK( actor->getID() == id );
+                CHECK_FALSE( actor->is_dead() );
+                CHECK( actor->pos_abs() == square );
+                CHECK( distinct_squares.insert( square ).second );
+                CHECK( actor->goal == goal );
+                CHECK( actor->mission == NPC_MISSION_TRAVELLING );
+                CHECK( actor->is_active() == local );
+                CHECK( get_map().inbounds( square ) == local );
+                int local_owners = 0;
+                for( npc &loaded : g->all_npcs() ) {
+                    if( loaded.getID() == id ) {
+                        ++local_owners;
+                        CHECK( &loaded == actor.get() );
+                    }
+                }
+                CHECK( local_owners == ( local ? 1 : 0 ) );
+                std::cout << "MISSION_ROSTER_ROUND_TRIP size=" << count
+                          << " boundary=" << label << " activity=" << activity
+                          << " generation=" << generation << " actor=" << id.get_value()
+                          << " square=" << actor->pos_abs() << " mission=" << static_cast<int>( actor->mission )
+                          << " local_owners=" << local_owners << " active=" << actor->is_active()
+                          << " goal=" << actor->goal << '\n';
+            }
+        };
+        check_boundary( "initial_local", inside, true );
+
+        std::map<character_id, tripoint_abs_ms> outside;
+        for( const auto &[id, start] : inside ) {
+            overmap_buffer.find_npc( id )->set_moves( 100 );
+            outside.emplace( id, start + point::east );
+        }
+        process_monsters_and_npcs_turn_for_test();
+        check_boundary( "physical_outward", outside, false );
+
+        const auto world_name = world_generator->active_world->world_name;
+        REQUIRE( g->save() );
+        r067_handover_reload( world_name );
+        CHECK( get_avatar().pos_abs() == observer_start );
+        REQUIRE( get_map().get_abs_sub() == origin );
+        check_boundary( "offscreen_reload", outside, false );
+
+        get_avatar().set_moves( 100 );
+        const auto observer_next = observer_start + point::east;
+        REQUIRE( g->walk_move( get_map().get_bub( observer_next ) ) );
+        CHECK( get_avatar().pos_abs() == observer_next );
+        REQUIRE( get_map().get_abs_sub() == origin + point_rel_sm( 1, 0 ) );
+        check_boundary( "native_bubble_reentry", outside, true );
+
+        REQUIRE( g->save() );
+        r067_handover_reload( world_name );
+        CHECK( get_avatar().pos_abs() == observer_next );
+        check_boundary( "local_reload", outside, true );
+
+        // A real reverse walk unloads the same squares. Sample the normal
+        // overmap caller on consecutive eligible minutes beyond that handoff.
+        get_avatar().set_moves( 100 );
+        REQUIRE( g->walk_move( get_map().get_bub( observer_start ) ) );
+        REQUIRE( get_map().get_abs_sub() == origin );
+        check_boundary( "reverse_to_offscreen", outside, false );
+        // A partially loaded next OMT can immediately admit the party again.
+        // Walk two more submaps away to qualify the offscreen-only window.
+        for( int step = 0; step < 2 * SEEX; ++step ) {
+            get_avatar().set_moves( 100 );
+            REQUIRE( g->walk_move( get_avatar().pos_bub() + point::west ) );
+        }
+        REQUIRE( get_map().get_abs_sub() == origin + point_rel_sm( -2, 0 ) );
+        check_boundary( "probe_offscreen", outside, false );
+        auto previous_squares = outside;
+        std::map<character_id, int> moving_ticks;
+        for( int tick = 1; tick <= 8; ++tick ) {
+            calendar::turn += 1_minutes;
+            const auto wall_start = std::chrono::steady_clock::now();
+            const std::clock_t cpu_start = std::clock();
+            process_overmap_npc_move_for_test();
+            const std::clock_t cpu_end = std::clock();
+            const auto wall_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                                     std::chrono::steady_clock::now() - wall_start ).count();
+            const auto cpu_us = cpu_start == static_cast<std::clock_t>( -1 ) ||
+                                cpu_end == static_cast<std::clock_t>( -1 ) ? -1 :
+                                ( cpu_end - cpu_start ) * 1000000LL / CLOCKS_PER_SEC;
+            const auto &reservation = scene.site().active_hostile_operation.reservation;
+            REQUIRE( reservation.member_ids == issued );
+            REQUIRE( reservation.activity_id == activity );
+            REQUIRE( reservation.generation == generation );
+            std::cout << "MISSION_ROSTER_DUE size=" << count << " tick=" << tick
+                      << " cpu_us=" << cpu_us << " wall_us=" << wall_us << '\n';
+            for( const character_id id : living ) {
+                const auto actor = overmap_buffer.find_npc( id );
+                REQUIRE( actor );
+                CHECK_FALSE( actor->is_active() );
+                CHECK( actor->mission == NPC_MISSION_TRAVELLING );
+                const auto square = actor->pos_abs();
+                const auto prior = previous_squares.at( id );
+                const auto work = reservation.coarse_member_work.find( id );
+                if( square != prior ) {
+                    ++moving_ticks[id];
+                }
+                std::cout << "MISSION_ROSTER_WORK size=" << count << " tick=" << tick
+                          << " actor=" << id.get_value() << " before=" << prior << " after=" << square
+                          << " work=" << ( work != reservation.coarse_member_work.end() ? work->second.work_millis : -1 )
+                          << " cost=" << ( work != reservation.coarse_member_work.end() ? work->second.edge_cost_millis : -1 )
+                          << " serviced=" << ( work != reservation.coarse_member_work.end() ?
+                                               work->second.serviced_active_turns : -1 ) << '\n';
+                previous_squares.at( id ) = square;
+            }
+        }
+        for( const character_id id : living ) {
+            CAPTURE( count, id.get_value() );
+            CHECK( moving_ticks[id] > 0 );
+        }
+    }
+}
+
 TEST_CASE( "retained abort return chooses one paired executor and preserves a completed watch",
            "[bandit_live_world][handover_stability_067][handover_executor_067]" )
 {
