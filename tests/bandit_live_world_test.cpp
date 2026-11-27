@@ -72071,6 +72071,213 @@ TEST_CASE( "issued human responders cross the reality boundary and reload at eve
     }
 }
 
+TEST_CASE( "funded report responders advance on ordinary simulation turns",
+           "[.][seed_campaign][funded_dispatch_party_cost]" )
+{
+    using namespace bandit_live_world;
+    REQUIRE( world_generator->active_world );
+    const std::string world_name = world_generator->active_world->world_name;
+    REQUIRE( g->save() );
+    r067_handover_reload( world_name );
+    override_option autosave( "AUTOSAVE", "false" );
+    override_option diagnostic( "RAID_PERFORMANCE_DIAGNOSTIC", "off" );
+    override_option npc_spawn( "NPC_SPAWNTIME", "0" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    const int count = GENERATE( 1, 2, 3, 4, 5, 6, 7 );
+    CAPTURE( count );
+    const auto time_turn = [&]() {
+        get_avatar().set_moves( 0 );
+        const auto wall_start = std::chrono::steady_clock::now();
+        const auto cpu_start = std::clock();
+        const bool ended = g->do_turn();
+        const auto cpu_end = std::clock();
+        const auto wall_end = std::chrono::steady_clock::now();
+        REQUIRE_FALSE( ended );
+        REQUIRE( cpu_start != static_cast<std::clock_t>( -1 ) );
+        REQUIRE( cpu_end >= cpu_start );
+        return std::make_pair(
+                   std::chrono::duration_cast<std::chrono::nanoseconds>( wall_end - wall_start ).count(),
+                   ( cpu_end - cpu_start ) * 1000000000LL / CLOCKS_PER_SEC );
+    };
+    const auto prelude_before = calendar::turn;
+    const auto prelude = time_turn();
+    std::cout << "FUNDED_TURN_PRELUDE size=" << count
+              << " advanced=" << ( calendar::turn == prelude_before + 1_turns )
+              << " wall_ns=" << prelude.first << " cpu_ns=" << prelude.second << '\n';
+
+    const auto prior_observer = get_avatar().pos_abs();
+    on_out_of_scope restore_observer( [prior_observer]() {
+        g->place_player_overmap( project_to<coords::omt>( prior_observer ), false );
+        get_avatar().setpos( prior_observer, false );
+    } );
+    REQUIRE( g->place_player_overmap( tripoint_abs_omt::zero, false ) );
+    get_avatar().setpos( tripoint_abs_ms::zero, false );
+    rng_set_engine_seed( 187112973U );
+    const int danger = ( std::max( count, 2 ) - 1 ) * 20 / 3 + 1;
+    r066_visit_scene scene( true, true, "", true, false, danger );
+    const auto issued = scene.site().active_hostile_operation.reservation.member_ids;
+    REQUIRE( issued.size() == static_cast<std::size_t>( std::max( 2, count ) ) );
+    auto living = issued;
+    if( count == 1 ) {
+        const auto casualty = overmap_buffer.find_npc( issued.back() );
+        REQUIRE( casualty );
+        casualty->die( &get_map(), nullptr );
+        g->cleanup_dead();
+        REQUIRE_FALSE( overmap_buffer.find_npc( issued.back() ) );
+        living.pop_back();
+    }
+
+    const auto goal = scene.target;
+    const tripoint_abs_omt first_omt( 5, 0, 0 );
+    for( int x = first_omt.x(); x <= goal.x(); ++x ) {
+        for( int y = -2; y <= 2; ++y ) {
+            overmap_buffer.ter_set( tripoint_abs_omt( x, y, 0 ), oter_id( "field" ) );
+        }
+    }
+    for( std::size_t i = 0; i < living.size(); ++i ) {
+        const auto id = living[i];
+        const auto actor = overmap_buffer.find_npc( id );
+        REQUIRE( actor );
+        g->remove_npc( id );
+        actor->travel_overmap( project_to<coords::ms>( first_omt ) +
+                               point( 2, 4 + 2 * static_cast<int>( i ) ) );
+        actor->set_speed_base( 100 );
+        actor->set_mission( NPC_MISSION_NULL );
+        actor->goal = npc::no_goal_point;
+        actor->omt_path.clear();
+    }
+
+    // Keep the named party inside activation range and all remaining camp
+    // bodies outside it. Every size uses the same empty local scene and route.
+    const tripoint_abs_omt observer_omt( -25, 0, 0 );
+    REQUIRE( g->place_player_overmap( observer_omt, false ) );
+    get_avatar().setpos( project_to<coords::ms>( observer_omt ), false );
+    clear_map();
+    wipe_map_terrain();
+    get_avatar().set_mutation( trait_id( "DEBUG_CLOAK" ) );
+    on_out_of_scope restore_cloak( []() {
+        get_avatar().unset_mutation( trait_id( "DEBUG_CLOAK" ) );
+    } );
+    const auto observer = get_avatar().pos_abs();
+    REQUIRE( get_avatar().pos_abs_omt() == observer_omt );
+    REQUIRE( get_map().inbounds( observer ) );
+
+    // Adopt all active clocks one minute after noon, four minutes before the
+    // next production update. The records start empty and never seed a payment.
+    REQUIRE( calendar::once_every( time_between_npc_OM_moves ) );
+    calendar::turn += 1_minutes;
+    refresh_live_bandit_activation();
+    advance_live_bandit_hostile_approaches_for_test();
+    const auto activity = scene.site().active_hostile_operation.reservation.activity_id;
+    const auto generation = scene.site().active_hostile_operation.reservation.generation;
+    {
+        auto &reservation = scene.site().active_hostile_operation.reservation;
+        REQUIRE( reservation.activation.active );
+        REQUIRE( reservation.activation.active_turns == 0 );
+        REQUIRE_FALSE( scene.site().home_activation.active );
+        if( count == 1 ) {
+            REQUIRE( reservation.casualty_ids == std::vector<character_id>{ issued.back() } );
+        }
+        for( const character_id id : living ) {
+            auto &work = reservation.coarse_member_work[id];
+            REQUIRE( work.work_millis == 0 );
+            REQUIRE_FALSE( work.edge_bound );
+            work.serviced_active_turns = reservation.activation.active_turns;
+        }
+    }
+
+    const auto check_background = [&]() {
+        REQUIRE( g->all_npcs().begin() == g->all_npcs().end() );
+        REQUIRE( g->all_monsters().begin() == g->all_monsters().end() );
+        REQUIRE( get_avatar().pos_abs() == observer );
+        REQUIRE( overmap_buffer.global_state.bandit_live_world.sites.size() == 1 );
+        REQUIRE_FALSE( scene.site().home_activation.active );
+    };
+    constexpr int windows = 4;
+    const auto cadence = to_turns<int>( time_between_npc_OM_moves );
+    std::vector<tripoint_abs_ms> positions;
+    std::vector<tripoint_abs_omt> paid_destinations;
+    for( const character_id id : living ) {
+        const auto actor = overmap_buffer.find_npc( id );
+        REQUIRE( actor );
+        positions.push_back( actor->pos_abs() );
+    }
+    for( int window = 0; window < windows; ++window ) {
+        CAPTURE( window );
+        check_background();
+        const int turns = window == 0 ? cadence - to_turns<int>( 1_minutes ) : cadence;
+        std::vector<std::pair<long long, long long>> samples;
+        samples.reserve( turns );
+        for( int tick = 0; tick < turns; ++tick ) {
+            const auto before = calendar::turn;
+            samples.push_back( time_turn() );
+            REQUIRE( calendar::turn == before + 1_turns );
+        }
+        REQUIRE( calendar::once_every( time_between_npc_OM_moves ) );
+        const auto now = to_turn<int>( calendar::turn );
+        for( int tick = 0; tick < turns; ++tick ) {
+            std::cout << "FUNDED_TURN size=" << count << " window=" << window
+                      << " turn=" << now - turns + tick + 1
+                      << " due=" << ( tick + 1 == turns )
+                      << " wall_ns=" << samples[tick].first << " cpu_ns=" << samples[tick].second << '\n';
+        }
+        check_background();
+        const auto &operation = scene.site().active_hostile_operation;
+        const auto &reservation = operation.reservation;
+        REQUIRE( operation.phase == hostile_operation_phase::approaching );
+        REQUIRE( reservation.activity_id == activity );
+        REQUIRE( reservation.generation == generation );
+        REQUIRE( reservation.member_ids == issued );
+        REQUIRE( reservation.owner == simulation_owner::abstract );
+        REQUIRE( reservation.activation.active );
+        REQUIRE( reservation.activation.active_turns == 240 + 300 * window );
+
+        for( std::size_t i = 0; i < living.size(); ++i ) {
+            const auto id = living[i];
+            const auto actor = overmap_buffer.find_npc( id );
+            REQUIRE( actor );
+            const auto found = reservation.coarse_member_work.find( id );
+            REQUIRE( found != reservation.coarse_member_work.end() );
+            const auto &work = found->second;
+            CAPTURE( id.get_value(), positions[i], actor->pos_abs() );
+            std::cout << "FUNDED_ACTOR size=" << count << " window=" << window << " actor=" << id.get_value()
+                      << " before=" << positions[i] << " after=" << actor->pos_abs()
+                      << " goal=" << actor->goal << " active=" << actor->is_active()
+                      << " mission=" << static_cast<int>( actor->mission )
+                      << " work=" << work.work_millis << " cost=" << work.edge_cost_millis
+                      << " serviced=" << work.serviced_active_turns << '\n';
+            REQUIRE_FALSE( actor->is_active() );
+            REQUIRE_FALSE( get_map().inbounds( actor->pos_abs() ) );
+            REQUIRE_FALSE( actor->is_dead() );
+            REQUIRE( actor->mission == NPC_MISSION_TRAVELLING );
+            REQUIRE( actor->goal == goal );
+            REQUIRE( work.serviced_active_turns == reservation.activation.active_turns );
+            REQUIRE( work.work_millis == 240000 );
+            if( window == 0 ) {
+                REQUIRE( actor->pos_abs() == positions[i] );
+                REQUIRE( work.edge_bound );
+                REQUIRE( work.edge_cost_millis == 300000 );
+                REQUIRE( work.from == std::vector<tripoint_abs_omt>{ actor->pos_abs_omt() } );
+                REQUIRE( work.to.size() == 1 );
+                paid_destinations.push_back( work.to.front() );
+            } else {
+                REQUIRE( actor->pos_abs() != positions[i] );
+                REQUIRE( actor->pos_abs_omt() == paid_destinations[i] );
+                REQUIRE_FALSE( work.edge_bound );
+                REQUIRE( work.edge_cost_millis == 0 );
+                const auto &route = actor->omt_path;
+                const auto next = std::find_if( route.rbegin(), route.rend(), [&]( const auto &point ) {
+                    return point != actor->pos_abs_omt();
+                } );
+                REQUIRE( next != route.rend() );
+                paid_destinations[i] = *next;
+                REQUIRE( rl_dist( actor->pos_abs_omt(), paid_destinations[i] ) == 1 );
+            }
+            positions[i] = actor->pos_abs();
+        }
+    }
+}
+
 TEST_CASE( "retained abort return chooses one paired executor and preserves a completed watch",
            "[bandit_live_world][handover_stability_067][handover_executor_067]" )
 {
