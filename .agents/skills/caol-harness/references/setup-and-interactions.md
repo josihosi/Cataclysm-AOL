@@ -4,6 +4,15 @@ Scenario setup removes irrelevant friction; it does not prove gameplay. Use the 
 below for suite runs. Record applied changes and keep their evidence scope explicit. For item
 activation/placement, use the current native prompt and [setup interaction](setup-interaction.md).
 
+## Reach an evac shelter roof
+
+Evac shelters and the playtest saves that start inside them have a ladder or stairs to the roof. If the route finder cannot reach the roof, inspect the existing access and try the door from an adjacent tile. The door can be locked.
+
+1. Find a **Halligan bar**. When debug setup is allowed, spawn **Halligan bar** (`halligan`) from the debug item menu on the disposable playtest save.
+2. Pick it up if needed and **wield** it. Open the item's **Activate** or **Use** action, choose **Pry crate, window, door or nails**, and target the adjacent locked door when prompted.
+3. Confirm the native result, walk through the opening, then climb the ladder or stairs. Check that the player reaches the roof level. If prying fails and breaking the door is acceptable for the scenario, use **Smash** toward the door with the bar wielded and verify the opening.
+4. Record debug spawning and any door damage as player setup when the test concerns an NPC's later entry.
+
 ## Mutation setup for suite runs
 
 Josef authorizes practical avatar mutation setup liberally, including invisibility and avatar

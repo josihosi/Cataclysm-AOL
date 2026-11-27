@@ -31,6 +31,8 @@ python3 tools/openclaw_harness/startup_harness.py list-scenarios --family human-
 
 Choose a variant whose starting state fits the question. Some catalogue families describe recipes without a ready fixture. On selection, follow the returned `next_action` to bind the actual build and save. [Catalogue search](references/searching.md#search-the-playtest-catalogue) · [Selection and launch](references/selection-and-launch.md)
 
+For evac shelter roof access, check the [locked-door and Halligan procedure](references/setup-and-interactions.md#reach-an-evac-shelter-roof).
+
 ## Prepared setups: choose by the behavior being tested
 
 For fire, scout and robbery questions, the [prepared camp setups](GAME-MANUAL.md#josefs-two-brazier-base-save) explain which window layout, light and nearby actors to use. For a full journey, start where the behavior begins. A compatible checkpoint can answer a narrower question. Preserve the owner's original save. [Reusable scenario recipes](references/playtest-suite.md) · [Writing a scenario](GAME-MANUAL.md#compose-a-useful-scenario)
