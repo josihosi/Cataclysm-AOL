@@ -2,6 +2,8 @@
 
 ## Parked for Josef
 
+- **In-world radio conversations — locked.** [Radio play WEC](radio-play/WEC.md) and [frozen radio FS](radio-play/FS.md) are ready for Josef. The design notes are in [Human todo](human-todo.md). The coordinator continues the current testing program.
+
 - **NPC AI Lab — locked by Josef.** Only Josef’s explicit instruction to open the lab authorizes importing the [secondary FS](npc-ai-lab/FS.md) into the delivery roadmap. Until then, continue the current work. Leave the lab outside task selection, assignment, implementation and playtests. Completing the current work does not open it.
 
 ## Phase 2 preparation — seeded overmap AI campaign, 2026-11-22

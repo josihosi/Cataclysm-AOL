@@ -1,0 +1,43 @@
+North up. Radius 40 overmap tiles. One diagram cell spans 3 x 3 tiles.
+          |     |
+          |    G|
+          |
+          |
+          |
+          |
+          |
+ -A+      |
+   ++     |
+    +:F  ::        +-
+    :C2--:C1      +D
+    :::   |       |       |
+    ++   ::  |    |       |
+  +-+    ::+:@    +-      |
+-++     -:::::: ++|       |
+++        ::::::+++-------+
+|         ::::::        ---
+          :::::::
+      +++ ::C3:::
+     ++|++::::::
+     |  |+::::::+
+   ++E    ::::: ++
+   |++-+  :::: --+--+-
+       |            +B
+       |             |
+
+Legend
+@       Your position (the NPC speaking on this radio). The player's position is unknown.
+C1-C3   Named city centers. C1 Ansonia, C2 Piermont, C3 Deblois.
+:       Urban area. Cities are dangerous.
+-       Road running east-west.
+|       Road running north-south.
++       Road bend, junction, or road segments combined in one diagram cell.
+blank   Other or unshown terrain. The sketch does not establish a walkable route.
+
+Familiar rural landmarks
+A   Motel northwest of Piermont.
+B   Motel southeast of Deblois.
+D   Campground east of Ansonia.
+E   Radio tower south of Piermont.
+F   Pump station northeast of Piermont.
+G   Pump station northeast of Ansonia.
