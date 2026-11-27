@@ -72278,6 +72278,255 @@ TEST_CASE( "funded report responders advance on ordinary simulation turns",
     }
 }
 
+TEST_CASE( "funded responders admit independently at a blocked loaded boundary",
+           "[.][seed_campaign][funded_loaded_boundary]" )
+{
+    using namespace bandit_live_world;
+    const auto run = []( const int count, const bool blocked ) {
+        CAPTURE( count, blocked );
+        REQUIRE( world_generator->active_world );
+        const std::string world_name = world_generator->active_world->world_name;
+        REQUIRE( g->save() );
+        r067_handover_reload( world_name );
+        override_option autosave( "AUTOSAVE", "false" );
+        override_option diagnostic( "RAID_PERFORMANCE_DIAGNOSTIC", "off" );
+        override_option npc_spawn( "NPC_SPAWNTIME", "0" );
+        override_option llm( "LLM_INTENT_ENABLE", "false" );
+
+        const auto time_turn = [&]() {
+            get_avatar().set_moves( 0 );
+            const auto start = std::chrono::steady_clock::now();
+            const auto cpu = std::clock();
+            const bool ended = g->do_turn();
+            const auto cpu_end = std::clock();
+            const auto end = std::chrono::steady_clock::now();
+            REQUIRE_FALSE( ended );
+            REQUIRE( cpu != static_cast<std::clock_t>( -1 ) );
+            REQUIRE( cpu_end >= cpu );
+            return std::make_pair( std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                       end - start ).count(),
+                                   ( cpu_end - cpu ) * 1000000000LL / CLOCKS_PER_SEC );
+        };
+        const auto prelude = time_turn();
+        std::cout << "BOUNDARY_PRELUDE wall_ns=" << prelude.first
+                  << " cpu_ns=" << prelude.second << '\n';
+        REQUIRE( g->place_player_overmap( tripoint_abs_omt::zero, false ) );
+        get_avatar().setpos( tripoint_abs_ms::zero, false );
+        rng_set_engine_seed( 187112973U );
+        r066_visit_scene scene( true, true, "", true, false, ( count - 1 ) * 20 / 3 + 1 );
+        wipe_map_terrain();
+        get_avatar().set_mutation( trait_id( "DEBUG_CLOAK" ) );
+        on_out_of_scope restore_cloak( []() {
+            get_avatar().unset_mutation( trait_id( "DEBUG_CLOAK" ) );
+        } );
+
+        auto &operation = scene.site().active_hostile_operation;
+        const auto issued = operation.reservation.member_ids;
+        REQUIRE( issued.size() == static_cast<std::size_t>( count ) );
+        const auto activity = operation.reservation.activity_id;
+        const auto generation = operation.reservation.generation;
+        const auto goal = scene.target;
+        map &here = get_map();
+        const tripoint_bub_ms gate( 0, 64, 0 );
+        const auto gate_abs = here.get_abs( gate );
+        const auto gate_origin = gate_abs + point::west;
+        const tripoint_abs_omt remote_omt = project_to<coords::omt>( gate_origin );
+        for( int x = remote_omt.x(); x <= goal.x(); ++x ) {
+            for( int y = -1; y <= 1; ++y ) {
+                overmap_buffer.ter_set( tripoint_abs_omt( x, y, 0 ), oter_id( "field" ) );
+            }
+        }
+        if( !MAPBUFFER.lookup_submap_existing( project_to<coords::sm>( gate_origin ) ) ) {
+            physical_navigation::step_read needed;
+            needed.position = gate_abs;
+            needed.missing_geometry = gate_origin;
+            REQUIRE( physical_navigation::acquire_movement_geometry( gate_abs, needed ) );
+        }
+        tinymap remote;
+        remote.load( remote_omt, false );
+        std::vector<tripoint_abs_ms> starts;
+        std::vector<tripoint_abs_ms> landings;
+        for( std::size_t i = 0; i < issued.size(); ++i ) {
+            const auto lane = gate + point( 0, 3 * static_cast<int>( i ) );
+            const auto landing = here.get_abs( lane );
+            const auto start = landing + point::west;
+            const auto tile = project_remain<coords::omt>( start ).remainder_tripoint;
+            REQUIRE( project_to<coords::omt>( start ) == remote_omt );
+            // Give all bodies the same single legal crossing direction.
+            // The short rock lanes prevent bypass through a peer's opening.
+            for( int y = -1; y <= 1; ++y ) {
+                remote.ter_set( tile + point( -1, y ), ter_str_id( "t_rock" ) );
+                remote.ter_set( tile + point( 0, y ), ter_str_id( y == 0 ? "t_grass" : "t_rock" ) );
+                remote.furn_set( tile + point( 0, y ), furn_str_id::NULL_ID() );
+            }
+            for( const point side : { point::north, point::south } ) {
+                here.ter_set( lane + side, ter_str_id( "t_rock" ) );
+            }
+            here.ter_set( lane, ter_str_id( "t_grass" ) );
+            here.furn_set( lane, i == 0 && blocked ? furn_str_id( "f_safe_l" ) :
+                           furn_str_id::NULL_ID() );
+            const auto actor = overmap_buffer.find_npc( issued[i] );
+            REQUIRE( actor );
+            g->remove_npc( issued[i] );
+            actor->travel_overmap( start );
+            actor->set_speed_base( 100 );
+            actor->set_moves( 0 );
+            actor->set_mission( NPC_MISSION_NULL );
+            actor->goal = npc::no_goal_point;
+            actor->omt_path.clear();
+            starts.push_back( start );
+            landings.push_back( landing );
+        }
+        const auto observer = get_avatar().pos_abs();
+        here.invalidate_map_cache( 0 );
+        here.build_map_cache( 0 );
+        REQUIRE( here.passable( gate ) != blocked );
+        REQUIRE( g->all_npcs().begin() == g->all_npcs().end() );
+        REQUIRE( g->all_monsters().begin() == g->all_monsters().end() );
+
+        refresh_live_bandit_activation();
+        advance_live_bandit_hostile_approaches_for_test();
+        const auto cadence = to_turns<int>( time_between_npc_OM_moves );
+        REQUIRE( calendar::once_every( time_between_npc_OM_moves ) );
+        const auto clock_start = calendar::turn;
+        auto &reservation = scene.site().active_hostile_operation.reservation;
+        REQUIRE( reservation.activation.active );
+        REQUIRE( reservation.activation.active_turns == 0 );
+        for( std::size_t i = 0; i < issued.size(); ++i ) {
+            const auto actor = overmap_buffer.find_npc( issued[i] );
+            REQUIRE( actor );
+            REQUIRE( actor->pos_abs() == starts[i] );
+            REQUIRE( actor->goal == goal );
+            REQUIRE( actor->mission == NPC_MISSION_TRAVELLING );
+            REQUIRE_FALSE( actor->is_active() );
+            REQUIRE_FALSE( actor->duty_incapacitated() );
+            if( blocked && i == 0 ) {
+                REQUIRE_FALSE( here.open_door( *actor, gate, false, true ) );
+            }
+            const auto &work = reservation.coarse_member_work.at( issued[i] );
+            REQUIRE( work.work_millis == 0 );
+            REQUIRE( work.serviced_active_turns == 0 );
+            std::cout << "BOUNDARY_START size=" << count << " blocked=" << blocked
+                      << " actor=" << issued[i].get_value() << " square=" << starts[i]
+                      << " landing=" << landings[i] << " goal=" << goal
+                      << " moves=" << actor->get_moves() << " speed=" << actor->get_speed()
+                      << " turn=" << to_turn<int>( clock_start ) << '\n';
+        }
+        const auto advance_window = [&]( const int window ) {
+            std::vector<std::pair<long long, long long>> samples;
+            for( int i = 0; i < cadence; ++i ) {
+                samples.push_back( time_turn() );
+            }
+            REQUIRE( calendar::turn == clock_start + ( window * time_between_npc_OM_moves ) );
+            REQUIRE( get_avatar().pos_abs() == observer );
+            const auto now = to_turn<int>( calendar::turn );
+            for( int i = 0; i < cadence; ++i ) {
+                std::cout << "BOUNDARY_TURN size=" << count << " blocked=" << blocked
+                          << " window=" << window << " turn=" << now - cadence + i + 1
+                          << " due=" << ( i == cadence - 1 )
+                          << " wall_ns=" << samples[i].first << " cpu_ns=" << samples[i].second << '\n';
+            }
+        };
+        const auto check_operation = [&]() {
+            const auto &op = scene.site().active_hostile_operation;
+            REQUIRE( op.phase == hostile_operation_phase::approaching );
+            REQUIRE( op.reservation.member_ids == issued );
+            REQUIRE( op.reservation.activity_id == activity );
+            REQUIRE( op.reservation.generation == generation );
+            REQUIRE( op.reservation.owner == simulation_owner::abstract );
+            REQUIRE( op.reservation.activation.active );
+        };
+        const auto record_actor = [&]( const character_id id, const int window ) {
+            const auto actor = overmap_buffer.find_npc( id );
+            REQUIRE( actor );
+            const auto &current = scene.site().active_hostile_operation.reservation;
+            const auto &work = current.coarse_member_work.at( id );
+            const auto &refusals = current.travel_routes.at( id ).local_boundary_refusals;
+            int local_owners = 0;
+            for( const npc &loaded_actor : g->all_npcs() ) {
+                if( loaded_actor.getID() == id ) {
+                    REQUIRE( &loaded_actor == actor.get() );
+                    ++local_owners;
+                }
+            }
+            std::cout << "BOUNDARY_ACTOR size=" << count << " blocked=" << blocked
+                      << " window=" << window << " actor=" << id.get_value()
+                      << " square=" << actor->pos_abs() << " active=" << actor->is_active()
+                      << " local_owners=" << local_owners << " work=" << work.work_millis
+                      << " cursor=" << work.serviced_active_turns
+                      << " speed=" << actor->get_speed() << " moves=" << actor->get_moves()
+                      << " refusals=" << refusals.size()
+                      << " retry=" << ( refusals.empty() ? -1 : refusals.front().retry_after ) << '\n';
+            REQUIRE( local_owners == ( actor->is_active() ? 1 : 0 ) );
+            REQUIRE( work.work_millis == 0 );
+            REQUIRE( work.serviced_active_turns == current.activation.active_turns );
+            REQUIRE( actor->goal == goal );
+            REQUIRE( actor->mission == NPC_MISSION_TRAVELLING );
+        };
+
+        advance_window( 1 );
+        check_operation();
+        for( std::size_t i = 0; i < issued.size(); ++i ) {
+            const auto actor = overmap_buffer.find_npc( issued[i] );
+            REQUIRE( actor );
+            record_actor( issued[i], 1 );
+            const bool held = i == 0 && blocked;
+            REQUIRE( actor->pos_abs() == ( held ? starts[i] : landings[i] ) );
+            REQUIRE( actor->is_active() == !held );
+            const auto &result = scene.site().active_hostile_operation.reservation.travel_routes.at(
+                                     issued[i] ).local_boundary_refusals;
+            REQUIRE( result.size() == ( held ? 1 : 0 ) );
+        }
+        if( !blocked ) {
+            return;
+        }
+        const auto id = issued.front();
+        const auto refusal = scene.site().active_hostile_operation.reservation.travel_routes.at(
+                                 id ).local_boundary_refusals.front();
+        REQUIRE( refusal.origin == starts.front() );
+        REQUIRE( refusal.destination == landings.front() );
+        REQUIRE( refusal.goal == goal );
+        REQUIRE( here.furn( gate ) == furn_str_id( "f_safe_l" ) );
+        // Remove only the obstruction through the native destruction handler.
+        // This scripted action is outside both turn timing windows.
+        REQUIRE( here.bash( gate, 200, true, true ).did_bash );
+        REQUIRE( here.furn( gate ) == furn_str_id::NULL_ID() );
+        REQUIRE( here.passable( gate ) );
+        std::cout << "BOUNDARY_OPEN size=" << count << " actor=" << id.get_value()
+                  << " square=" << gate_abs << " turn=" << to_turn<int>( calendar::turn )
+                  << " retry=" << refusal.retry_after << '\n';
+        for( int window = 2; window <= 4; ++window ) {
+            advance_window( window );
+            check_operation();
+            const auto actor = overmap_buffer.find_npc( id );
+            REQUIRE( actor );
+            record_actor( id, window );
+            if( actor->is_active() ) {
+                REQUIRE( actor->pos_abs() == landings.front() );
+                REQUIRE( scene.site().active_hostile_operation.reservation.travel_routes.at(
+                             id ).local_boundary_refusals.empty() );
+                return;
+            }
+            REQUIRE( actor->pos_abs() == starts.front() );
+            REQUIRE( to_turn<int>( calendar::turn ) <= refusal.retry_after );
+        }
+        FAIL( "opened landing remained unavailable at the first due turn after the refusal expired" );
+    };
+
+    SECTION( "two open" ) {
+        run( 2, false );
+    }
+    SECTION( "two blocked" ) {
+        run( 2, true );
+    }
+    SECTION( "six open" ) {
+        run( 6, false );
+    }
+    SECTION( "six blocked" ) {
+        run( 6, true );
+    }
+}
+
 TEST_CASE( "retained abort return chooses one paired executor and preserves a completed watch",
            "[bandit_live_world][handover_stability_067][handover_executor_067]" )
 {
