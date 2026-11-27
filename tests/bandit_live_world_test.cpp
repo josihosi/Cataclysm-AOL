@@ -72501,14 +72501,16 @@ TEST_CASE( "funded responders admit independently at a blocked loaded boundary",
             const auto actor = overmap_buffer.find_npc( id );
             REQUIRE( actor );
             record_actor( id, window );
+            const auto now = to_turn<int>( calendar::turn );
             if( actor->is_active() ) {
+                REQUIRE( now > refusal.retry_after );
                 REQUIRE( actor->pos_abs() == landings.front() );
                 REQUIRE( scene.site().active_hostile_operation.reservation.travel_routes.at(
                              id ).local_boundary_refusals.empty() );
                 return;
             }
             REQUIRE( actor->pos_abs() == starts.front() );
-            REQUIRE( to_turn<int>( calendar::turn ) <= refusal.retry_after );
+            REQUIRE( now <= refusal.retry_after );
         }
         FAIL( "opened landing remained unavailable at the first due turn after the refusal expired" );
     };
