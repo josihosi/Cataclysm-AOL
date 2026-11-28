@@ -638,8 +638,12 @@ time_duration Character::vitamin_rate( const vitamin_id &vit ) const
 {
     time_duration res = vit.obj().rate();
 
-    for( const auto &m : get_functioning_mutations() ) {
-        const mutation_branch &mut = m.obj();
+    // Walk the same cached order as get_functioning_mutations() without allocating its list.
+    for( const auto &[id, data] : cached_mutations ) {
+        if( data.corrupted != 0 ) {
+            continue;
+        }
+        const mutation_branch &mut = id.obj();
         auto iter = mut.vitamin_rates.find( vit );
         if( iter != mut.vitamin_rates.end() && iter->second != 0_turns ) {
             if( res != 0_turns ) {
