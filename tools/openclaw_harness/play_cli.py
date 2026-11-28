@@ -407,6 +407,80 @@ class PlayerClient:
         result["log_identity_status"] = logs["identity_status"]
         return result
 
+    def _closed_late_receipt_source(self, record, native_request):
+        """Bind a closed request to the verified terminal generation and native chain."""
+        try:
+            status = json.loads((self.session / "status.json").read_text())
+            owner = json.loads((self.session / "game-process.json").read_text())
+            exit_record = json.loads((self.session / "game-process-exit.json").read_text())
+            receipt = record["receipt"]
+            request = record["request"]["request"]
+            run = native_request["run_id"]
+            generation = owner["process_generation"]
+            bridge_generation = status.get("session_generation")
+            if (status.get("state") != "safe_to_cleanup" or
+                any(x.get("binding_id") != self.binding for x in (status, owner, exit_record, receipt)) or
+                type(bridge_generation) is not int or receipt.get("session_generation") != bridge_generation or
+                owner.get("run_id") != run or exit_record.get("run_id") != run or
+                not isinstance(generation, dict) or not generation.get("birth_identity") or
+                not generation.get("command_sha256") or not generation.get("executable_path") or
+                record["request"]["envelope"].get("binding_id") != self.binding or
+                request.get("observation_id") != native_request.get("frame_id") or
+                request.get("action_id") != native_request.get("action_id") or
+                generation.get("pid") != owner.get("pid") or exit_record.get("pid") != owner.get("pid") or
+                type(exit_record.get("exit_code")) is not int or exit_record.get("process_generation") != generation):
+                return None
+            terminal_id = status.get("terminal_request_id")
+            if not isinstance(terminal_id, str) or not terminal_id:
+                return None
+            terminal = Bridge.request_result(self.session, terminal_id)
+            if not terminal.get("ok"):
+                return None
+            terminal_receipt = terminal["receipt"]
+            response = terminal["response"]
+            final = response.get("result", {})
+            cleanup = final.get("cleanup", {})
+            process = cleanup.get("process_generation", {})
+            save = final.get("native_save_completion", {})
+            world = save.get("world_action_receipt", {})
+            completion = save.get("completion", {})
+            confirmation = save.get("terminal_action_receipt", {})
+            instance = completion.get("process_instance")
+            if (terminal["request"]["envelope"].get("binding_id") != self.binding or
+                terminal["request"]["request"].get("action") != "run.finish" or
+                terminal_receipt.get("binding_id") != self.binding or
+                type(receipt.get("sequence")) is not int or type(terminal_receipt.get("sequence")) is not int or
+                terminal_receipt["sequence"] <= receipt["sequence"] or
+                terminal_receipt.get("session_generation") != bridge_generation or
+                response.get("ok") is not True or final.get("schema") != "caol-cockpit-live-final-v1" or
+                final.get("state") != "finished" or final.get("run_id") != run or final.get("binding_id") != self.binding or
+                cleanup.get("status") != "already_exited" or cleanup.get("pid") != owner.get("pid") or
+                process.get("pid") != owner.get("pid") or process.get("expected") != generation or
+                process.get("status") != "exited" or process.get("observed", {}).get("pid") != owner.get("pid") or
+                process.get("observed", {}).get("alive") is not False or
+                save.get("status") != "matched" or not instance or
+                any(x.get("run_id") != run or x.get("requested_run_id") != run or
+                    x.get("process_instance") != instance for x in (world, completion, confirmation)) or
+                world.get("event") != "surface_receipt" or world.get("accepted") is not True or
+                world.get("action_id") != "world.save_quit" or completion.get("event") != "native_save_completion" or
+                completion.get("schema") != "caol-native-save-completion-v1" or
+                completion.get("serializer_result") != "saved" or completion.get("save_succeeded") is not True or
+                any(not world.get(k) or world.get(k) != completion.get(k) for k in
+                    ("request_id", "requested_run_id", "requested_surface_id", "requested_frame_id")) or
+                confirmation.get("event") != "surface_receipt" or confirmation.get("accepted") is not True or
+                confirmation.get("action_id") != "prompt.choose" or
+                confirmation.get("requested_frame_id") != world.get("resulting_frame_id")):
+                return None
+            path = owner.get("log_paths", {}).get("native_semantic_events", {})
+            artifact = completion.get("artifact_identity", {})
+            if (path.get("scope") != "run_bound" or not path.get("path") or
+                    artifact.get("kind") != "harness_run_directory" or not artifact.get("value") or
+                    Path(path["path"]).resolve().parent != Path(artifact["value"]).resolve()):
+                return None
+            return {"path": path["path"], "producer": "native_semantic_events"}, run, instance
+        except (OSError, ValueError, TypeError, KeyError, AttributeError):
+            return None
+
     def late_receipt(self, request_id):
         from types import SimpleNamespace
         record = Bridge.request_result(self.session, request_id)
@@ -420,7 +494,33 @@ class PlayerClient:
                                actor_id=None, actor_name=None, request_id=native_request.get("request_id"), run_id=None,
                                event=None, process_instance=None, where=[], contains=None, select=[], limit=20,
                                from_turn=None, to_turn=None)
-        result = self.evidence(args)
+        try:
+            status = json.loads((self.session / "status.json").read_text())
+        except (OSError, ValueError):
+            status = {}
+        if (status and (status.get("binding_id") != self.binding or
+                type(status.get("session_generation")) is not int or
+                record.get("receipt", {}).get("session_generation") != status["session_generation"])):
+            result = {"rows": []}
+        elif status.get("state") == "safe_to_cleanup":
+            identity = self._evidence_logs()
+            result = {"rows": []}
+            if identity.get("identity_status") == "bound" and identity.get("run_id") == native_request.get("run_id"):
+                # Preserve the normal descriptor-bound query; a same-generation
+                # request must also name the source's run.
+                args.run_id = native_request["run_id"]
+                result = self.evidence(args)
+            elif identity.get("identity_status") == "unavailable":
+                # The terminal fallback is only for absent identity, not a
+                # conflicting descriptor or binding.
+                closed = self._closed_late_receipt_source(record, native_request)
+                if closed is not None:
+                    from evidence_events import query
+                    source, run, instance = closed
+                    result = query([source], {"request_id": native_request["request_id"],
+                                              "run_id": run, "process_instance": instance}, limit=20)
+        else:
+            result = self.evidence(args)
         match = match_late_native_receipt(native_request, result.get("rows", []))
         return {"ok": True, "schema": "caol-late-receipt-view-v1", "request_id": request_id,
                 "match": match, "coverage": "Retained sources only; rotation or truncation may hide the receipt."}

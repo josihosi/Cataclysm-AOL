@@ -13,6 +13,8 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cockpit_archive import Archive, ArchiveMap, ArchiveSequence
+from cockpit_file_bridge import FileBackedCockpitBridge as Bridge
+import evidence_events
 from play_cli import PlayerClient, session_lock
 import gameplay_display
 import play_cli
@@ -2035,6 +2037,99 @@ class PlayerRepairRegressionTest(unittest.TestCase):
             self.assertTrue(later['match']['receipt']['accepted']); self.assertEqual(later['match']['receipt']['sequence'],467)
             self.assertIn('authority require separate', later['match']['note']); submit.assert_not_called()
         self.assertEqual(play_cli.match_late_native_receipt(req, [{'payload': {**native, 'requested_frame_id':'other'}}])['status'], 'unavailable')
+
+
+class ClosedLateReceiptPublicationTest(unittest.TestCase):
+ def setUp(self):
+  self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);self.s=Path(self.tmp.name)
+  for name in ('requests','responses'): (self.s/name).mkdir()
+  self.trace=self.s/'native.log';self.trace.write_text('')
+  self.gen={'pid':42,'birth_identity':'birth-a','command_sha256':'command-a','executable_path':'/synthetic/game'}
+  self.write('bridge.manifest.json',{'binding_id':'bind'})
+  self.write('status.json',{'binding_id':'bind','state':'safe_to_cleanup'})
+  self.write('game-process.json',{'binding_id':'bind','run_id':'run','pid':42,'process_generation':self.gen,'log_paths':{'native_semantic_events':{'scope':'run_bound','path':str(self.trace)}}})
+  self.write('game-process-exit.json',{'binding_id':'bind','run_id':'run','pid':42,'process_generation':self.gen,'exit_code':0})
+  self.b=Bridge(self.s,[],binding_id='bind')
+  prior={'action':'game.act','observation_id':'frame-before','action_id':'menu.choose'}
+  prev={'ok':True,'receipt':{'native_receipt':{'event':'surface_receipt','run_id':'run','requested_run_id':'run','accepted':True,'process_instance':'instance','requested_frame_id':'frame-before','action_id':'menu.choose','resulting_frame_id':'frame-target'}},'observation':{'run_id':'run','observation_id':'frame-target','process_instance':'instance'}}
+  self.persist('prior',prior,prev)
+  req={'run_id':'run','surface_id':'surface','frame_id':'frame-target','request_id':'native-request','action_id':'world.pause'}
+  self.request=req
+  self.persist('target',{'action':'game.act','observation_id':'frame-target','action_id':'world.pause'},{'ok':False,'error':'native_surface_receipt_timeout','receipt':{'surface_request':req,'native_receipt':None}})
+  native={'run_id':'run','requested_run_id':'run','process_instance':'instance'}
+  world={**native,'event':'surface_receipt','accepted':True,'action_id':'world.save_quit',
+         'request_id':'save','requested_surface_id':'save-surface','requested_frame_id':'save-frame','resulting_frame_id':'confirm'}
+  completion={**native,'event':'native_save_completion','serializer_result':'saved','save_succeeded':True,
+              'request_id':'save','requested_surface_id':'save-surface','requested_frame_id':'save-frame',
+              'schema':'caol-native-save-completion-v1','artifact_identity':{'kind':'harness_run_directory','value':str(self.s)}}
+  confirm={**native,'event':'surface_receipt','accepted':True,'action_id':'prompt.choose','requested_frame_id':'confirm'}
+  final={'schema':'caol-cockpit-live-final-v1','run_id':'run','binding_id':'bind','state':'finished',
+         'cleanup':{'status':'already_exited','pid':42,'process_generation':{'pid':42,'expected':self.gen,'status':'exited','observed':{'pid':42,'alive':False}}},
+         'native_save_completion':{'status':'matched','world_action_receipt':world,'completion':completion,'terminal_action_receipt':confirm}}
+  self.persist('finish',{'action':'run.finish'}, {'ok':True,'result':final})
+  self.write('status.json',{'binding_id':'bind','state':'safe_to_cleanup','session_generation':0,'terminal_request_id':'finish'})
+  self.event={'event':'surface_receipt','run_id':'run','process_instance':'instance','sequence':9,'request_id':'native-request','requested_run_id':'run','requested_surface_id':'surface','requested_frame_id':'frame-target','action_id':'world.pause','accepted':True,'resulting_frame_id':'next'}
+  self.setevent(self.event)
+ def write(self,n,value): (self.s/n).write_text(json.dumps(value))
+ def persist(self,key,request,response):
+  self.write('requests/'+key+'.json',{'request_id':key,'binding_id':'bind','request':request})
+  wire=(json.dumps(request,ensure_ascii=False,separators=(',',':'))+'\n').encode()
+  self.b._persist_response(key,wire,json.dumps(response).encode())
+ def setevent(self,value):self.trace.write_text('openclaw_harness_semantic_step: '+json.dumps(value)+'\n')
+ def query(self):
+  c=PlayerClient(self.s)
+  with patch.object(evidence_events,'retain',return_value={'sha256':'synthetic','json_bytes':0}),patch.object(c,'submit',side_effect=AssertionError('input')):
+   return c.late_receipt('target')
+ def test_matching_closed_chain_and_instance_recovers(self):
+  v=self.query();self.assertEqual(v['match']['status'],'matched',v);self.assertEqual(v['match']['receipt']['sequence'],9)
+ def test_closed_descriptor_matching_generation_uses_normal_lookup_without_finish(self):
+  self.write('status.json',{'binding_id':'bind','state':'safe_to_cleanup','session_generation':0,'session_descriptor':{'run_id':'run'}})
+  (self.s/'responses/finish.receipt.json').unlink()
+  with patch.object(PlayerClient,'_closed_late_receipt_source',side_effect=AssertionError('terminal fallback must not be used')):
+   result=self.query()
+  self.assertEqual(result['match']['status'],'matched',result)
+  self.assertEqual(result['match']['receipt']['sequence'],9)
+ def test_replacement_generation_does_not_read_log_with_old_matching_row(self):
+  status={'binding_id':'bind','state':'safe_to_cleanup','session_generation':1,'terminal_request_id':'finish'}
+  self.write('status.json',status)
+  bgen={**self.gen,'pid':43,'birth_identity':'birth-b'}
+  replacement=self.s/'replacement';replacement.mkdir();replacement_log=replacement/'native.log'
+  replacement_log.write_text(self.trace.read_text())  # Exact old A row on B's source.
+  owner=json.loads((self.s/'game-process.json').read_text());owner.update(pid=43,process_generation=bgen)
+  owner['log_paths']['native_semantic_events']['path']=str(replacement_log)
+  self.write('game-process.json',owner);self.write('game-process-exit.json',{'binding_id':'bind','run_id':'run','pid':43,'process_generation':bgen,'exit_code':0})
+  # A digest-consistent terminal record belongs to B, while the target is A.
+  import hashlib
+  path=self.s/'responses/finish.json';body=json.loads(path.read_text());final=body['result']
+  final['cleanup']['pid']=43;final['cleanup']['process_generation']['pid']=43;final['cleanup']['process_generation']['observed']['pid']=43;final['cleanup']['process_generation']['expected']=bgen
+  for name in ('world_action_receipt','completion','terminal_action_receipt'):
+   final['native_save_completion'][name]['process_instance']='instance-b'
+  final['native_save_completion']['completion']['artifact_identity']['value']=str(replacement)
+  path.write_text(json.dumps(body))
+  meta=self.s/'responses/finish.receipt.json';entry=json.loads(meta.read_text())
+  entry['session_generation']=1;entry['response_sha256']=hashlib.sha256(path.read_bytes()).hexdigest()
+  meta.write_text(json.dumps(entry))
+  # Even if the replacement path contains the exact old event, no query occurs.
+  with patch.object(evidence_events,'query',side_effect=AssertionError('must not read replacement log')):
+   self.assertEqual(self.query()['match']['status'],'unavailable')
+ def test_actual_candidate_cli_subprocess_paths(self):
+  # Exercise the staged entry point and real evidence query. Redirect only
+  # evidence artifact retention into this test's disposable directory.
+  code = ("import os,sys,runpy,evidence_events,evidence_display; from pathlib import Path; "
+          "evidence_events.retain=lambda value: evidence_display.retain(value,directory=Path(os.environ['CAOL_TEST_EVIDENCE'])); "
+          "sys.argv=[sys.argv[1],'--diagnostics','--session',sys.argv[2],'late-receipt','--request-id','target']; "
+          "runpy.run_path(sys.argv[0],run_name='__main__')")
+  env=dict(os.environ, CAOL_TEST_EVIDENCE=str(self.s/'evidence'), PYTHONDONTWRITEBYTECODE='1')
+  def call():
+   result=subprocess.run([sys.executable,'-c',code,str(CLI),str(self.s)],capture_output=True,text=True,env=env,timeout=15)
+   self.assertEqual(result.returncode,0,result.stderr+result.stdout)
+   return json.loads(result.stdout)
+  self.assertEqual(call()['match']['status'],'matched')  # terminal fallback
+  self.write('status.json',{'binding_id':'bind','state':'safe_to_cleanup','session_generation':0,'session_descriptor':{'run_id':'run'}})
+  (self.s/'responses/finish.receipt.json').unlink()
+  self.assertEqual(call()['match']['status'],'matched')  # normal descriptor
+  self.write('status.json',{'binding_id':'bind','state':'safe_to_cleanup','session_generation':1,'session_descriptor':{'run_id':'run'}})
+  self.assertEqual(call()['match']['status'],'unavailable')  # old generation
 
 
 if __name__ == "__main__":
