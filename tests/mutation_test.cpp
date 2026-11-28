@@ -45,6 +45,7 @@ static const trait_id trait_BEAK_PECK( "BEAK_PECK" );
 static const trait_id trait_EAGLEEYED( "EAGLEEYED" );
 static const trait_id trait_FELINE_EARS( "FELINE_EARS" );
 static const trait_id trait_GOURMAND( "GOURMAND" );
+static const trait_id trait_HEMOVORE( "HEMOVORE" );
 static const trait_id trait_LUPINE_FUR( "LUPINE_FUR" );
 static const trait_id trait_MYOPIC( "MYOPIC" );
 static const trait_id trait_QUICK( "QUICK" );
@@ -60,15 +61,19 @@ static const trait_id trait_TEST_TRIGGER( "TEST_TRIGGER" );
 static const trait_id trait_TEST_TRIGGER_2( "TEST_TRIGGER_2" );
 static const trait_id trait_TEST_TRIGGER_2_active( "TEST_TRIGGER_2_active" );
 static const trait_id trait_TEST_TRIGGER_active( "TEST_TRIGGER_active" );
+static const trait_id trait_TEST_VITAMIN_RATE( "TEST_VITAMIN_RATE" );
 static const trait_id trait_THRESH_ALPHA( "THRESH_ALPHA" );
 static const trait_id trait_THRESH_BIRD( "THRESH_BIRD" );
 static const trait_id trait_THRESH_CHIMERA( "THRESH_CHIMERA" );
 static const trait_id trait_UGLY( "UGLY" );
+static const trait_id trait_VEGAN( "VEGAN" );
 static const trait_id trait_WINGS_BIRD( "WINGS_BIRD" );
 
+static const vitamin_id vitamin_iron( "iron" );
 static const vitamin_id vitamin_mutagen( "mutagen" );
 static const vitamin_id vitamin_mutagen_human( "mutagen_human" );
 static const vitamin_id vitamin_mutagen_test_removal( "mutagen_test_removal" );
+static const vitamin_id vitamin_vitC( "vitC" );
 
 static std::string get_mutations_as_string( const Character &you );
 
@@ -425,6 +430,46 @@ TEST_CASE( "mutation_effect_does_not_stack_integrated_armor", "[mutations][regre
 
     dummy.mutation_effect( trait_LUPINE_FUR, true );
     CHECK( dummy.amount_worn( itype_integrated_lupine_fur ) == 1 );
+}
+
+TEST_CASE( "vitamin_rate_uses_functioning_mutations_in_cache_order",
+           "[mutations][vitamins][regression]" )
+{
+    Character &dummy = get_player_character();
+    clear_avatar();
+    CHECK( dummy.vitamin_rate( vitamin_iron ) == 900_turns );
+    CHECK( dummy.vitamin_rate( vitamin_vitC ) == 900_turns );
+
+    dummy.set_mutation( trait_HEMOVORE );
+    CHECK( dummy.vitamin_rate( vitamin_iron ) == 473_turns );
+    CHECK( dummy.vitamin_rate( vitamin_vitC ) == -450_turns );
+
+    dummy.new_mutation_cache->mutations = { trait_TEST_VITAMIN_RATE };
+    dummy.update_cached_mutations();
+    REQUIRE( dummy.has_trait( trait_TEST_VITAMIN_RATE ) );
+    REQUIRE_FALSE( dummy.has_permanent_trait( trait_TEST_VITAMIN_RATE ) );
+    const std::vector<trait_id> functioning = dummy.get_functioning_mutations();
+    REQUIRE( functioning.size() == 2 );
+    CAPTURE( functioning.front().str() );
+
+    // The +1000 and -590 iron overrides truncate after each step. The former
+    // vector walk followed the cache order, which can vary by standard library.
+    const time_duration combined = functioning.front() == trait_HEMOVORE ? 2385_turns : 2404_turns;
+    CHECK( dummy.vitamin_rate( vitamin_iron ) == combined );
+
+    dummy.new_mutation_cache->mutations = { trait_TEST_VITAMIN_RATE, trait_VEGAN };
+    dummy.update_cached_mutations();
+    REQUIRE( dummy.has_trait( trait_VEGAN ) );
+    REQUIRE( dummy.has_permanent_trait( trait_HEMOVORE ) );
+    REQUIRE_FALSE( dummy.has_trait( trait_HEMOVORE ) );
+    CHECK( dummy.vitamin_rate( vitamin_iron ) == -1712_turns );
+    CHECK( dummy.vitamin_rate( vitamin_vitC ) == 900_turns );
+
+    dummy.new_mutation_cache->mutations = { trait_TEST_VITAMIN_RATE };
+    dummy.update_cached_mutations();
+    REQUIRE( dummy.has_trait( trait_HEMOVORE ) );
+    CHECK( dummy.vitamin_rate( vitamin_vitC ) == -450_turns );
+    clear_avatar();
 }
 
 static void check_test_mutation_is_triggered( const Character &dummy, bool trigger_on )

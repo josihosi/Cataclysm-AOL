@@ -40,6 +40,16 @@
   },
   {
     "type": "mutation",
+    "id": "TEST_VITAMIN_RATE",
+    "name": "Test iron rate override",
+    "description": "An iron rate chosen to expose different rounding results in different mutation orders.",
+    "points": 0,
+    "valid": false,
+    "player_display": false,
+    "vitamin_rates": [ [ "iron", -590 ] ]
+  },
+  {
+    "type": "mutation",
     "id": "TEST_CONSISTENCY_CHECK",
     "name": "Dummy Test Trait",
     "points": 0,
