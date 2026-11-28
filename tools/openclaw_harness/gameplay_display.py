@@ -800,6 +800,14 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
     import shlex
     import re
 
+    if result.get("schema") == "caol-late-receipt-view-v1":
+        match = result.get("match") or {}
+        if match.get("status") == "matched":
+            receipt = match.get("receipt") or {}
+            return ("Retained native receipt: accepted=" + str(receipt.get("accepted")) +
+                    ", sequence=" + str(receipt.get("sequence")) + ". " + match.get("note", "") +
+                    " " + result.get("coverage", ""))
+        return "Late native receipt unavailable: " + str(result.get("error") or match.get("reason")) + ". " + result.get("coverage", "")
     if result.get("schema") == "caol-startup-debug-recovery-v1":
         return _startup_debug_recovery_text(result)
     if result.get("schema") == "caol-play-count-repeat-v1":
@@ -833,6 +841,9 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
         return stopped + ("\n" + dialog if dialog else "")
 
     view = player_output(result)
+    if view.get("error") == "native_surface_receipt_timeout" and result.get("request_id"):
+        lines.append("Unknown action outcome. Inspect retained native evidence → play late-receipt --request-id " +
+                     shlex.quote(str(result["request_id"])) + "; observe the current game and do not repeat the action.")
     if "latest" in result and "turn_assessment" in result:
         record = result.get("latest") or {}
         assessment = result.get("turn_assessment") or {}
@@ -845,6 +856,36 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
             lines.append(f"Simulation: {metrics['game_turns_per_simulation_second']:.1f} turns/s")
         if metrics.get("sample_count") is not None:
             lines.append(f"Measured turns: {metrics['sample_count']}")
+        retained = result.get("retained_crossings") or {}
+        for item in retained.get("records", []):
+            lines.append(f"Retained crossing: turn {item.get('game_turn')} — {item['simulation_seconds'] * 1000:.3f} ms "
+                         f"(evidence {item.get('evidence_sha256')})")
+        if retained.get("status") != "retained":
+            lines.append("Retained crossing retrieval: " + str(retained.get("status", "unavailable")))
+        if retained.get("coverage"):
+            lines.append("Coverage: " + retained["coverage"])
+        # Native extrema and bounded receipts outlive the rolling display window.
+        extrema = assessment.get("native_extrema") or {}
+        if extrema.get("status") == "retained":
+            native = extrema.get("snapshot") or {}
+            peak = native.get("individual_max") or {}
+            if isinstance(peak.get("simulation_seconds"), (int, float)):
+                lines.append(f"Retained native maximum: turn {peak.get('game_turn')} — {peak['simulation_seconds'] * 1000:.3f} ms")
+            lines.append("Coverage: retained maximum is not a complete list of threshold crossings; "
+                         "native diagnostic detail may be unavailable and updates since publication are unknown.")
+        else:
+            lines.append("Coverage: retained native extrema unavailable; the rolling window is incomplete history.")
+        receipts = assessment.get("native_slow_receipts") or {}
+        if receipts.get("status") == "retained":
+            native = receipts.get("snapshot") or {}
+            for item in native.get("records", []):
+                if item.get("alarm_kind") in (1, 2) and isinstance(item.get("dominant_simulation_seconds"), (int, float)):
+                    lines.append(f"Retained threshold group: peak turn {(item.get('dominant') or {}).get('game_turn')} — "
+                                 f"{item['dominant_simulation_seconds'] * 1000:.3f} ms; count {item.get('count')}")
+            lines.append(f"Receipt coverage: bounded summary, dropped {native.get('dropped_alarm_count', 'unknown')}; "
+                         "unpublished updates and individual turns within grouped counts are unknown.")
+        else:
+            lines.append("Receipt coverage: bounded threshold receipts unavailable; earlier crossings may be missing.")
         selected_max = assessment.get("selected_max_turn")
         if selected_max:
             if selected_max.get("status") == "retained":
@@ -1031,6 +1072,12 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
     prompt_title = (current.get("facts_changed", {}).get("title")
                     if owner == "prompt" and isinstance(current.get("facts_changed"), dict) else None)
     if fresh:
+        frame_state = result.get("world_frame_status")
+        if owner == "world" and isinstance(frame_state, dict):
+            lines.append("World frame: " + frame_state.get("status", "unknown") +
+                         "; observation generation " + str(frame_state.get("generation")) +
+                         "; native turn " + str(frame_state.get("game_turn")) + ". " +
+                         frame_state.get("note", ""))
         facts = snapshot["current"].get("facts", {})
         if owner == "prompt":
             prompt_title = facts.get("title")

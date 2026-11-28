@@ -15,6 +15,7 @@ import math
 import os
 import re
 import shlex
+import sqlite3
 from pathlib import Path
 import sys
 import time
@@ -70,6 +71,118 @@ def _merge_turn_assessments(previous: dict[str, Any] | None, current: dict[str, 
                     values.append(item)
         merged[field] = values
     return merged
+
+
+def match_late_native_receipt(request, rows):
+    """Correlate retained evidence only; never submit input or grant a frame."""
+    required = {"request_id": request.get("request_id"), "requested_run_id": request.get("run_id"),
+                "requested_surface_id": request.get("surface_id"), "requested_frame_id": request.get("frame_id"),
+                "action_id": request.get("action_id")}
+    if any(not isinstance(v, str) or not v for v in required.values()):
+        return {"status": "unavailable", "reason": "incomplete_native_request_identity"}
+    matches = []
+    identities = set()
+    for row in rows:
+        payload = row.get("payload", {}) if isinstance(row, dict) else {}
+        if (isinstance(payload, dict) and payload.get("event") == "surface_receipt" and
+                type(payload.get("accepted")) is bool and type(payload.get("sequence")) is int and
+                payload["sequence"] > 0 and all(payload.get(k) == v for k, v in required.items())):
+            identity = (payload.get("process_instance"), payload["sequence"], payload["accepted"],
+                        payload.get("resulting_frame_id"))
+            if identity not in identities:
+                identities.add(identity)
+                matches.append({"accepted": payload["accepted"], "sequence": payload["sequence"],
+                                "resulting_frame_id": payload.get("resulting_frame_id"),
+                                "source": row.get("source")})
+    if len(matches) != 1:
+        return {"status": "unavailable", "reason": "no_unique_matching_retained_receipt", "matches": len(matches)}
+    return {"status": "matched", "receipt": matches[0],
+            "note": "Read-only receipt evidence; successor, game outcome and current input authority require separate observation."}
+
+
+def retained_turn_crossings(session, owner, *, limit=128):
+    """Read bounded, owner-bound retained selections without touching native input."""
+    from cockpit_archive import Archive, ArchiveMap
+    path = session / "cockpit-evidence.sqlite"
+    if not path.is_file() or not owner.get("run_id") or not owner.get("binding_id"):
+        return {"status": "unavailable", "reason": "bound_archive_unavailable", "records": []}
+    archive = None
+    records, seen, errors, scanned = [], set(), 0, 0
+    truncated = False
+    try:
+        archive = Archive(path, run_id=owner["run_id"], binding_id=owner["binding_id"], readonly=True)
+        for namespace in ("selected_max_turns", "performance_alarms"):
+            entries = ArchiveMap(archive, namespace)
+            for key in entries:
+                if scanned >= limit:
+                    truncated = True
+                    break
+                scanned += 1
+                try:
+                    entry = entries[key]
+                    digest = entry["evidence"]["sha256"]
+                    item = recover(digest)
+                    if not isinstance(item, dict):
+                        errors += 1
+                        continue
+                    bound = item.get("owner", {})
+                    if bound.get("run_id") != owner["run_id"] or bound.get("binding_id") != owner["binding_id"]:
+                        errors += 1
+                        continue
+                    measurements = item.get("measurements") or [item.get("measurement", {})]
+                    for measurement in measurements:
+                        seconds = measurement.get("simulation_seconds")
+                        identity = measurement.get("measurement_id")
+                        if (measurement.get("run_id") != owner["run_id"] or
+                                not bound.get("process_identity") or
+                                measurement.get("process_identity") != bound.get("process_identity") or not identity or
+                                not isinstance(seconds, (int, float)) or isinstance(seconds, bool) or
+                                not math.isfinite(seconds) or seconds <= .100 or identity in seen):
+                            continue
+                        if len(records) >= limit:
+                            truncated = True
+                            break
+                        seen.add(identity)
+                        records.append({"game_turn": measurement.get("game_turn"),
+                                        "game_minutes": measurement.get("game_minutes"),
+                                        "simulation_seconds": seconds, "measurement_id": identity,
+                                        "evidence_sha256": digest, "source": namespace})
+                except (OSError, KeyError, TypeError, ValueError, AttributeError):
+                    errors += 1
+            if truncated:
+                break
+        records.sort(key=lambda row: (row["game_turn"] is None, row["game_turn"] or 0))
+        return {"status": "partial" if truncated or errors else "retained", "records": records,
+                "scanned_entries": scanned, "unavailable_entries": errors, "truncated": truncated,
+                "coverage": "Only retained selected maxima and legacy alarms; not all threshold crossings. "
+                            "Native bounded receipts may aggregate or omit events; unretained and unpublished turns are unknown."}
+    except (OSError, ValueError, sqlite3.Error) as error:
+        return {"status": "unavailable", "reason": type(error).__name__, "records": []}
+    finally:
+        if archive is not None:
+            archive.close()
+
+
+def world_frame_freshness(previous, current):
+    """Compare native observation provenance, never certify game load completion."""
+    generation = current.get("generation")
+    same = isinstance(previous, dict) and previous.get("generation") == generation
+    comparable = (same and current.get("process_instance") and
+                  current.get("process_instance") == previous.get("process_instance") and
+                  type(current.get("sequence")) is int and type(previous.get("sequence")) is int and
+                  bool(current.get("observation_id")) and bool(previous.get("observation_id")))
+    if not same:
+        label, note = ("initial World frame; loading or stale state not ruled out",
+                       "Refresh with play look and compare the native turn before acting.")
+    elif comparable and (current["sequence"] <= previous["sequence"] or
+                         current["observation_id"] == previous["observation_id"]):
+        label, note = "stale or unchanged World frame", "Refresh with play look; do not infer that loading completed."
+    elif comparable:
+        label, note = ("newer native World frame observed",
+                       "Frame ordering is confirmed; loading completeness is not independently certified.")
+    else:
+        label, note = "World freshness unknown", "Native frame identity is incomplete or changed; refresh and inspect."
+    return {**current, "status": label, "note": note}
 
 
 @contextmanager
@@ -294,6 +407,24 @@ class PlayerClient:
         result["log_identity_status"] = logs["identity_status"]
         return result
 
+    def late_receipt(self, request_id):
+        from types import SimpleNamespace
+        record = Bridge.request_result(self.session, request_id)
+        if not record.get("ok"):
+            return {"ok": False, "schema": "caol-late-receipt-view-v1", "error": "original_request_unavailable"}
+        response = record.get("response", {})
+        native_request = response.get("receipt", {}).get("surface_request", {})
+        if response.get("error") != "native_surface_receipt_timeout" or not native_request:
+            return {"ok": False, "schema": "caol-late-receipt-view-v1", "error": "not_an_unknown_receipt_timeout"}
+        args = SimpleNamespace(decisions=False, operation_id=None, group_id=None, actor=[], offset=0, snapshot=None,
+                               actor_id=None, actor_name=None, request_id=native_request.get("request_id"), run_id=None,
+                               event=None, process_instance=None, where=[], contains=None, select=[], limit=20,
+                               from_turn=None, to_turn=None)
+        result = self.evidence(args)
+        match = match_late_native_receipt(native_request, result.get("rows", []))
+        return {"ok": True, "schema": "caol-late-receipt-view-v1", "request_id": request_id,
+                "match": match, "coverage": "Retained sources only; rotation or truncation may hide the receipt."}
+
     def release_selected_max(self, *, run_id, measurement_id, digest):
         from process_performance import release_selected_max_turn
         result = release_selected_max_turn(self.session, run_id=run_id, binding_id=self.binding,
@@ -313,7 +444,12 @@ class PlayerClient:
             self.session, self.binding, pending=self.state.get("pending"),
             retain_max=getattr(args, "retain_max", False),
         )
+        owner = read_json(self.session / "performance-owner.json")
+        retained_crossings = (retained_turn_crossings(self.session, owner)
+                              if owner.get("binding_id") == self.binding else
+                              {"status": "unavailable", "reason": "binding_mismatch", "records": []})
         result = {"ok": True, "latest": record or None,
+                  "retained_crossings": retained_crossings,
                   "turn_assessment": assessment,
                   "comparison": {"status": "unavailable", "reason": "no baseline selected"},
                   "note": "Read-only game telemetry, independent of pending requests. Native turn assessment reads the run-bound trace without sending input. A session performance-turn-config.json with scenario provenance supplies alarm thresholds; without it measurements stay unassessed. --sample-seconds 1 measures the owned process now. --offset 0 --limit 5 pages exact retained records. --tag labels your workload, not a native fact."}
@@ -672,6 +808,16 @@ class PlayerClient:
         if display_state is not None:
             self.state["display"] = display_state
             self.state.pop("display_sha256", None)
+        world_frame_status = None
+        if (pending["request"].get("action") == "game.observe" and reusable and
+                surface.get("kind") == "world"):
+            current_frame = {"generation": receipt_generation,
+                             "process_instance": observation.get("process_instance"),
+                             "sequence": observation.get("sequence"),
+                             "observation_id": observation.get("observation_id"),
+                             "game_turn": observation.get("game_turn")}
+            world_frame_status = world_frame_freshness(self.state.get("world_frame_provenance"), current_frame)
+            self.state["world_frame_provenance"] = current_frame
         world_controls_unchanged = False
         current = (display_state or {}).get("current", {})
         world_observation = pending["request"]["action"] == "game.observe" and (display_state or {}).get("owner") == "world"
@@ -693,6 +839,7 @@ class PlayerClient:
                   **({"gameplay_outcome": self.state["gameplay_outcome"]}
                      if self.state.get("gameplay_outcome") else {}),
                   "world_controls_unchanged": world_controls_unchanged,
+                  **({"world_frame_status": world_frame_status} if world_frame_status else {}),
                   "world_observation": world_observation,
                   "turn_assessment": assessment,
                   "state": "collected" if response.get("ok") else "rejected", "request_id": request_id,
@@ -1310,6 +1457,8 @@ def main(argv=None):
     performance.add_argument("--tag", default="", help="Explicit comparable-workload annotation; never a native fact")
     performance.add_argument("--baseline", type=Path, help="Compare latest/sample with a previously saved tagged record")
     performance.add_argument("--save-baseline", type=Path, help="Save latest/sample as a tagged baseline; refuses overwrite")
+    late = commands.add_parser("late-receipt", help="Inspect retained evidence for an earlier unknown native receipt; never retries")
+    late.add_argument("--request-id", required=True)
     evidence = commands.add_parser("evidence", help="Query one immutable event snapshot across native, NPC and runner sources")
     for field in ("actor-id", "actor-name", "request-id", "run-id", "event", "process-instance"):
         evidence.add_argument("--" + field)
@@ -1392,6 +1541,8 @@ def main(argv=None):
             # Cancellation is an out-of-band control and must remain usable
             # while the submitting client owns the request lock.
             result = PlayerClient(args.session).cancel(args.reason)
+        elif args.command == "late-receipt":
+            result = PlayerClient(args.session).late_receipt(args.request_id)
         elif args.command in {"controls", "messages", "inspect"}:
             # These only read retained state/response artifacts.  Keep them
             # useful while another process owns the blocking collect lock.

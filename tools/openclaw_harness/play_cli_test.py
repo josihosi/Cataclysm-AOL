@@ -12,8 +12,10 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from cockpit_archive import Archive, ArchiveSequence
+from cockpit_archive import Archive, ArchiveMap, ArchiveSequence
 from play_cli import PlayerClient, session_lock
+import gameplay_display
+import play_cli
 
 CLI = Path(__file__).with_name("play_cli.py")
 
@@ -1953,6 +1955,86 @@ class PlayerCliTest(unittest.TestCase):
         stale = self.cli("repeat", "world.autoattack", "--count", "3", ok=False)
         self.assertEqual(stale["stop_reason"], "stale_world_authority")
         self.assertEqual(len([item for item in self.requests() if item["request"].get("action") == "game.act"]), 1)
+
+
+class PlayerRepairRegressionTest(unittest.TestCase):
+    def test_startup_generation_and_stale_are_not_certified_current(self):
+        a = {'generation': 3, 'process_instance': 'p', 'sequence': 10, 'game_turn': 50, 'observation_id': 'f10'}
+        first = play_cli.world_frame_freshness(None, a)
+        self.assertIn('loading or stale', first['status'])
+        self.assertIn('stale', play_cli.world_frame_freshness(a, dict(a))['status'])
+        later = play_cli.world_frame_freshness(a, {**a, 'sequence': 11, 'observation_id': 'f11'})
+        self.assertIn('newer', later['status'])
+        self.assertIn('not independently certified', later['note'])
+        self.assertIn('unknown', play_cli.world_frame_freshness(a, {**a, 'process_instance': 'q'})['status'])
+        self.assertIn('initial', play_cli.world_frame_freshness(a, {**a, 'generation': 4})['status'])
+        self.assertIn('stale', play_cli.world_frame_freshness(a, {**a, 'sequence': 11})['status'])
+        view = {'state':'collected', 'response':{'current_input':{'owner':'world'}}, 'world_frame_status':first}
+        snapshot = {'owner':'world','current':{'facts':{},'actions':[]}}
+        self.assertIn('loading or stale', gameplay_display.plain_player_output(view, snapshot=snapshot))
+
+    def test_retained_crossings_visible_and_incomplete_coverage_disclosed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp); owner = {'run_id': 'run', 'binding_id': 'binding', 'process_identity': 'birth'}
+            a = Archive(p/'cockpit-evidence.sqlite', run_id='run', binding_id='binding')
+            entries = ArchiveMap(a, 'selected_max_turns')
+            for key in ('a', 'b', 'c', 'foreign'):
+                entries[key] = {'evidence': {'sha256': key}}
+            a.close()
+            def record(key):
+                turn, sec = {'a': (5220900, .115901082), 'b': (5221800, .218206125),
+                             'c': (5222000, .100), 'foreign': (9, .5)}[key]
+                return {'owner': {**owner, **({'binding_id':'other'} if key == 'foreign' else {})},
+                        'measurement': {'measurement_id': key, 'run_id': 'run', 'process_identity':'birth',
+                                        'game_turn': turn, 'simulation_seconds': sec}}
+            with patch.object(play_cli, 'recover', side_effect=record):
+                result = play_cli.retained_turn_crossings(p, owner)
+            self.assertEqual([(r['game_turn'], r['simulation_seconds']) for r in result['records']],
+                             [(5220900, .115901082), (5221800, .218206125)])
+            self.assertEqual(result['status'], 'partial')
+            shown = gameplay_display.plain_player_output({'ok': True, 'latest': None,
+                'turn_assessment': {'metric': {'max_seconds': .03}, 'native_extrema': {'status': 'unavailable'}},
+                'retained_crossings': result, 'comparison': {}})
+            self.assertIn('5220900', shown); self.assertIn('5221800', shown)
+            self.assertIn('115.901 ms', shown); self.assertIn('218.206 ms', shown)
+            self.assertIn('not all threshold crossings', shown)
+
+    def test_delayed_receipt_through_event_query(self):
+        import evidence_events
+        req = {'request_id':'native-id','run_id':'run','surface_id':'surface','frame_id':'frame-80','action_id':'prompt.submit'}
+        native = {'event':'surface_receipt','run_id':'run','request_id':'native-id',
+                  'requested_run_id':'run','requested_surface_id':'surface','requested_frame_id':'frame-80',
+                  'action_id':'prompt.submit','accepted':True,'sequence':467,'resulting_frame_id':'frame-81'}
+        with tempfile.TemporaryDirectory() as tmp, patch.object(evidence_events, 'retain', return_value={'sha256':'test','json_bytes':1}):
+            path=Path(tmp)/'native.jsonl';path.write_text('')
+            src=[{'path':str(path),'producer':'native_semantic_events'}]
+            before=evidence_events.query(src, {'request_id':'native-id'})
+            self.assertEqual(play_cli.match_late_native_receipt(req,before['rows'])['status'],'unavailable')
+            path.write_text('openclaw_harness_semantic_step: '+json.dumps(native)+'\n')
+            after=evidence_events.query(src, {'request_id':'native-id'})
+            self.assertEqual(play_cli.match_late_native_receipt(req,after['rows'])['receipt']['sequence'],467)
+
+    def test_delayed_receipt_exact_match_never_grants_authority(self):
+        req = {'request_id':'native-id','run_id':'run','surface_id':'surface','frame_id':'frame-80','action_id':'prompt.submit'}
+        original = {'ok': True, 'response': {'error':'native_surface_receipt_timeout',
+                                             'receipt': {'surface_request': req}}}
+        native = {'event':'surface_receipt','request_id':'native-id','requested_run_id':'run',
+                  'requested_surface_id':'surface','requested_frame_id':'frame-80','action_id':'prompt.submit',
+                  'accepted':True,'sequence':467,'resulting_frame_id':'frame-81'}
+        client = play_cli.PlayerClient.__new__(play_cli.PlayerClient); client.session=Path('/unused')
+        with patch.object(play_cli.Bridge, 'request_result', return_value=original), \
+             patch.object(client, 'evidence', return_value={'rows':[]}), \
+             patch.object(client, 'submit') as submit:
+            absent = client.late_receipt('play-request')
+            self.assertEqual(absent['match']['status'], 'unavailable')
+            submit.assert_not_called()
+        with patch.object(play_cli.Bridge, 'request_result', return_value=original), \
+             patch.object(client, 'evidence', return_value={'rows':[{'payload': native, 'source': {'offset':1}}]}), \
+             patch.object(client, 'submit') as submit:
+            later = client.late_receipt('play-request')
+            self.assertTrue(later['match']['receipt']['accepted']); self.assertEqual(later['match']['receipt']['sequence'],467)
+            self.assertIn('authority require separate', later['match']['note']); submit.assert_not_called()
+        self.assertEqual(play_cli.match_late_native_receipt(req, [{'payload': {**native, 'requested_frame_id':'other'}}])['status'], 'unavailable')
 
 
 if __name__ == "__main__":
