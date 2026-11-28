@@ -2113,9 +2113,6 @@ void npc::assess_danger()
         } else if( has_faction_relationship( guy,
                                              npc_factions::relationship::watch_your_back ) ) {
             ai_cache.friends.emplace_back( g->shared_from( guy ) );
-        } else if( attitude_to( guy ) != Attitude::NEUTRAL &&
-                   sees( here, guy.pos_bub( here ) ) ) {
-            ai_cache.hostile_guys.emplace_back( g->shared_from( guy ) );
         }
     }
     if( is_friendly( player_character ) && sees_player ) {
