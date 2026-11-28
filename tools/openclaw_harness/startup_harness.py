@@ -53,6 +53,7 @@ from bandit_live_world_audit import RELEVANT_SPECIAL_IDS as BANDIT_HOME_SPECIAL_
 from scenario_registry import (
     CHECKPOINT_CHAIN_MANIFEST_VERSION,
     ManifestValidationError,
+    normalize_artifact_source,
     post_relaunch_terminal_label,
     saved_world_continuation_steps,
     validate_manifest,
@@ -18625,14 +18626,13 @@ def write_patrol_summary(run_dir: Path, patrol_summary: Dict[str, Any]) -> Dict[
 
 
 def resolve_artifact_source(profile: str, source: str) -> Tuple[Path, bool, str]:
-    normalized = source.strip().lower() if source else "debug.log"
-    if normalized in {"debug", "debug.log"}:
-        return config_dir_for_profile(profile) / "debug.log", True, "debug.log"
-    if normalized in {"llm", "llm_intent", "llm_intent.log"}:
-        return repo_root() / "config" / "llm_intent.log", False, "llm_intent.log"
-    if normalized in {"llm_events", "llm_intent_events", "llm_intent_events.log"}:
-        return repo_root() / "config" / "llm_intent_events.log", False, "llm_intent_events.log"
-    raise SystemExit(f"Unsupported artifact source: {source}")
+    try:
+        normalized = normalize_artifact_source(source)
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
+    if normalized == "debug.log":
+        return config_dir_for_profile(profile) / "debug.log", True, normalized
+    return repo_root() / "config" / normalized, False, normalized
 
 
 def write_artifact_log(destination: Path, text: str, existing: Path) -> Path:

@@ -18,6 +18,28 @@ from typing import Any, Callable, Dict, List, Mapping
 from scenario_registry_performance import performance_contract
 
 
+def normalize_artifact_source(value: Any) -> str:
+    """Canonical runtime log source for both admission and execution."""
+    if not isinstance(value, str):
+        raise ValueError("artifact_source must be a string")
+    source = value.strip().lower() or "debug.log"
+    aliases = {"debug": "debug.log", "debug.log": "debug.log",
+               "llm": "llm_intent.log", "llm_intent": "llm_intent.log", "llm_intent.log": "llm_intent.log",
+               "llm_events": "llm_intent_events.log", "llm_intent_events": "llm_intent_events.log",
+               "llm_intent_events.log": "llm_intent_events.log"}
+    if source not in aliases:
+        raise ValueError("Unsupported artifact source: " + value)
+    return aliases[source]
+
+
+def _validate_artifact_source(manifest: Mapping[str, Any], *, path: Path) -> None:
+    if "artifact_source" in manifest:
+        try:
+            normalize_artifact_source(manifest["artifact_source"])
+        except ValueError as error:
+            raise _error(path, "artifact_source: " + str(error)) from error
+
+
 MANIFEST_VERSION = 1
 CHECKPOINT_CHAIN_MANIFEST_VERSION = 2
 CAPABILITY_NAMESPACE_PREFIXES = (
@@ -837,6 +859,7 @@ def validate_manifest(manifest: Any, *, path: Path) -> Dict[str, Any]:
                 if not isinstance(catalogue.get(field), str) or not catalogue[field].strip():
                     raise _error(path, "catalogue." + field + " must be a non-empty string")
 
+    _validate_artifact_source(manifest, path=path)
     _validate_post_relaunch_reference(manifest, path=path)
     _validate_saved_world_start(manifest, path=path)
     _validate_performance_contract(manifest, path=path)
@@ -959,6 +982,7 @@ def lint_manifest(path: Path) -> Dict[str, Any]:
         add("$", "top_level_object", "top level must be an object")
         return outcome("invalid")
 
+    collect("artifact_source", "artifact_source", lambda: _validate_artifact_source(manifest, path=path))
     collect("post_relaunch", "post_relaunch_initial_step_reference",
             lambda: _validate_post_relaunch_reference(manifest, path=path))
     collect("saved_world_snapshot", "saved_world_continuation_steps",

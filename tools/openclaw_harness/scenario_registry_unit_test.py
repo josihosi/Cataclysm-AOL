@@ -24,6 +24,50 @@ from scenario_registry import (  # noqa: E402
 
 
 class ScenarioRegistryContractTest(unittest.TestCase):
+    def test_artifact_source_lint_and_selected_load_refuse_before_launch(self) -> None:
+        from unittest.mock import patch
+        from scenario_registry import lint_manifest
+        import startup_harness
+
+        declaration = self.versioned_manifest()
+        declaration["artifact_source"] = "harness"  # The rejected 070 value.
+        with tempfile.TemporaryDirectory() as temp:
+            path = self.write_manifest(Path(temp), "scenario.json", declaration)
+            result = lint_manifest(path)
+            self.assertEqual(result["status"], "invalid")
+            self.assertTrue(any(item["field"] == "artifact_source" and item["rule"] == "artifact_source"
+                                for item in result["diagnostics"]))
+            with patch.object(startup_harness.subprocess, "Popen", side_effect=AssertionError("launched")) as launch:
+                with self.assertRaisesRegex(SystemExit, "Unsupported artifact source: harness"):
+                    startup_harness.load_scenario(declaration["name"], source_path=path)
+            launch.assert_not_called()
+
+    def test_artifact_source_valid_aliases_and_invalid_values(self) -> None:
+        from scenario_registry import lint_manifest
+        import startup_harness
+
+        groups = {"debug.log": ("", " ", "debug", "DEBUG.LOG"),
+                  "llm_intent.log": ("llm", "llm_intent", "LLM_INTENT.LOG"),
+                  "llm_intent_events.log": ("llm_events", "llm_intent_events", "llm_intent_events.log")}
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for expected, values in groups.items():
+                for value in values:
+                    with self.subTest(value=value):
+                        declaration = self.versioned_manifest()
+                        declaration["artifact_source"] = value
+                        self.assertEqual(lint_manifest(self.write_manifest(root, "scenario.json", declaration))["status"], "valid")
+                        self.assertEqual(startup_harness.resolve_artifact_source("ignored", value)[2], expected)
+            for value in ("harness", "unknown.log", None, 42, {}, []):
+                with self.subTest(value=value):
+                    declaration = self.versioned_manifest()
+                    declaration["artifact_source"] = value
+                    self.assertEqual(lint_manifest(self.write_manifest(root, "scenario.json", declaration))["status"], "invalid")
+                    with self.assertRaises(SystemExit):
+                        startup_harness.resolve_artifact_source("ignored", value)
+            declaration = self.versioned_manifest()
+            self.assertEqual(lint_manifest(self.write_manifest(root, "scenario.json", declaration))["status"], "valid")
+
     def write_manifest(self, root: Path, name: str, manifest: dict) -> Path:
         path = root / name
         path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
