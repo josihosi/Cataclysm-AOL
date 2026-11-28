@@ -4322,6 +4322,183 @@ void npc::trace_hostile_decision_for_harness( const std::string &action,
                   to_turns<int>( calendar::turn - calendar::turn_zero ), payload.str(), change.str() );
 }
 
+static bool npc_walkable_step( const map &here, const tripoint_bub_ms &p )
+{
+    return here.passable_through( p ) && !here.has_flag( ter_furn_flag::TFLAG_DOOR, p );
+}
+
+static bool npc_can_board( const optional_vpart_position &part )
+{
+    return part.part_with_feature( VPFLAG_BOARDABLE, true ).has_value();
+}
+
+static bool npc_vehicle_allows_step( const map &here, const tripoint_bub_ms &from,
+                                     const tripoint_bub_ms &to )
+{
+    const optional_vpart_position origin = here.veh_at( from );
+    if( !origin || !origin->vehicle().is_moving() ) {
+        return true;
+    }
+    const optional_vpart_position destination = here.veh_at( to );
+    return veh_pointer_or_null( destination ) == veh_pointer_or_null( origin ) &&
+           npc_can_board( destination );
+}
+
+static bool separate_hostile_rally_guard_post( npc &who, const tripoint_bub_ms &post )
+{
+    // Let the ordinary return route bring a guard back from a different level
+    // or from beyond the local search area.
+    if( who.mission != NPC_MISSION_GUARD || who.get_ai_guard_pos() != who.get_guard_post() ||
+        who.posz() != post.z() || square_dist( who.pos_bub(), post ) > SEEX ) {
+        return false;
+    }
+    const npc *peer = get_creature_tracker().creature_at<npc>( post );
+    if( !peer || peer == &who || peer->mission != NPC_MISSION_GUARD ||
+        peer->get_guard_post() != who.get_guard_post() || peer->is_dead() ||
+        who.attitude_to( *peer ) == Creature::Attitude::HOSTILE ) {
+        return false;
+    }
+    const auto &world = overmap_buffer.global_state.bandit_live_world;
+    const auto *site = bandit_live_world::active_operation_duty_site_for( world, who.getID() );
+    if( !site ) {
+        return false;
+    }
+    const auto &operation = site->active_hostile_operation;
+    if( !operation.is_active() || peer->pos_abs_omt() != operation.rally_omt ||
+        ( operation.phase != bandit_live_world::hostile_operation_phase::outbound &&
+          operation.phase != bandit_live_world::hostile_operation_phase::rallying &&
+          operation.phase != bandit_live_world::hostile_operation_phase::waiting_night ) ||
+        bandit_live_world::active_operation_duty_site_for( world, peer->getID() ) != site ||
+        !who.has_active_operation_duty() || !peer->has_active_operation_duty() ) {
+        return false;
+    }
+    // Local admission shares the overmap body. A second object with the same
+    // ID cannot own a new persistent post.
+    if( g->find_npc( who.getID() ) != &who || g->find_npc( peer->getID() ) != peer ) {
+        return false;
+    }
+
+    // Arrival can give two members the same post after an ordinary pass.
+    // Keep the incumbent and find the returning guard a safe post at the rally.
+    if( who.is_involuntarily_asleep() || who.has_flag( json_flag_CANNOT_MOVE ) ||
+        who.has_effect( effect_stunned ) || who.has_effect( effect_psi_stunned ) ) {
+        who.move_pause();
+        return true;
+    }
+    map &here = get_map();
+    std::set<tripoint_abs_ms> reserved_posts;
+    auto loaded_npcs = g->all_npcs();
+    const auto current_body = [&]( const character_id id ) -> const npc * {
+        for( const npc &actor : loaded_npcs ) {
+            if( actor.getID() == id ) {
+                return &actor;
+            }
+        }
+        return g->find_npc( id );
+    };
+    for( const character_id id : operation.reservation.member_ids ) {
+        const npc *member = current_body( id );
+        if( member && member != &who && member->mission == NPC_MISSION_GUARD &&
+            member->get_guard_post() && !operation.reservation.member_is_resolved( id ) &&
+            member->has_active_operation_duty() ) {
+            reserved_posts.insert( *member->get_guard_post() );
+        }
+    }
+    const auto &settings = who.get_pathfinding_settings( true );
+    const auto walkable = [&]( const tripoint_bub_ms &p ) {
+        const bool exposed_trap = settings.avoid_traps && !here.tr_at( p ).is_benign() &&
+                                  !npc_can_board( here.veh_at( p ) );
+        const bool exposed_sharp = settings.avoid_sharp &&
+                                   here.has_flag_ter_or_furn( ter_furn_flag::TFLAG_SHARP, p ) &&
+                                   !here.has_vehicle_floor( p );
+        const bool too_large = settings.size > creature_size::medium &&
+                               here.has_flag( ter_furn_flag::TFLAG_SMALL_PASSAGE, p );
+        return npc_walkable_step( here, p ) && !exposed_trap && !exposed_sharp && !too_large;
+    };
+    const auto unreserved_rally_square = [&]( const tripoint_bub_ms &p ) {
+        const tripoint_abs_ms abs = here.get_abs( p );
+        return project_to<coords::omt>( abs ) == operation.rally_omt &&
+               reserved_posts.count( abs ) == 0;
+    };
+    const tripoint_bub_ms current = who.pos_bub();
+    const auto claim_current_post = [&]() {
+        const tripoint_bub_ms reached = who.pos_bub();
+        static const flag_id grabbed( "GRAB" );
+        if( !unreserved_rally_square( reached ) || !walkable( reached ) || who.has_flag( grabbed ) ||
+            who.has_effect_with_flag( flag_EFFECT_IMPEDING ) ||
+            who.sees_dangerous_field( reached ) ) {
+            return false;
+        }
+        const auto effects = who.get_effects();
+        if( std::any_of( effects.begin(), effects.end(), []( const effect & eff ) {
+            return eff.impairs_movement();
+        } ) ) {
+            return false;
+        }
+        who.path.clear();
+        who.set_guard_pos( who.pos_abs() );
+        return true;
+    };
+    if( claim_current_post() ) {
+        who.move_pause();
+        return true;
+    }
+
+    const auto npc_avoid = who.get_path_avoid();
+    const auto can_walk = [&]( const tripoint_bub_ms &from, const tripoint_bub_ms &to ) {
+        return to.z() == post.z() && square_dist( to, post ) <= SEEX &&
+               rl_dist( from, to ) == 1 && here.inbounds( to ) && !npc_avoid( to ) &&
+               walkable( to ) && npc_vehicle_allows_step( here, from, to );
+    };
+    const auto follow_path = [&]() {
+        // Movement effects belong to the attempted step.
+        who.move_to_next();
+        claim_current_post();
+    };
+    const auto reusable_path = [&]() {
+        if( who.path.empty() || !unreserved_rally_square( who.path.back() ) ) {
+            return false;
+        }
+        tripoint_bub_ms from = current;
+        for( const tripoint_bub_ms &next : who.path ) {
+            if( !can_walk( from, next ) ) {
+                return false;
+            }
+            from = next;
+        }
+        return true;
+    };
+    if( reusable_path() ) {
+        follow_path();
+        return true;
+    }
+    who.path.clear();
+    // Search open walking steps once, stopping at the first reachable post.
+    // Ordinary travel still owns opening doors and traversing stairs.
+    std::vector<tripoint_bub_ms> reachable{ current };
+    std::map<tripoint_bub_ms, tripoint_bub_ms> parent{ { current, current } };
+    for( size_t i = 0; i < reachable.size(); ++i ) {
+        const tripoint_bub_ms from = reachable[i];
+        for( const tripoint_bub_ms &next : here.points_in_radius( from, 1 ) ) {
+            if( parent.count( next ) || !can_walk( from, next ) ) {
+                continue;
+            }
+            parent.emplace( next, from );
+            if( unreserved_rally_square( next ) ) {
+                for( tripoint_bub_ms p = next; p != current; p = parent.at( p ) ) {
+                    who.path.push_back( p );
+                }
+                std::reverse( who.path.begin(), who.path.end() );
+                follow_path();
+                return true;
+            }
+            reachable.push_back( next );
+        }
+    }
+    who.move_pause();
+    return true;
+}
+
 void npc::execute_action( npc_action action )
 {
     trace_hostile_decision_for_harness( npc_action_name( action ), "execute_action" );
@@ -4430,8 +4607,10 @@ void npc::execute_action( npc_action action )
 
         case npc_return_to_guard_pos: {
             const tripoint_bub_ms local_guard_pos = here.get_bub( *ai_cache.guard_pos );
-            update_path( local_guard_pos );
-            if( pos_bub() == local_guard_pos || path.empty() ) {
+            if( separate_hostile_rally_guard_post( *this, local_guard_pos ) ) {
+                break;
+            }
+            if( !update_path( local_guard_pos ) || path.empty() ) {
                 move_pause();
                 ai_cache.guard_pos = std::nullopt;
                 path.clear();
@@ -6085,14 +6264,9 @@ void npc::move_to( const tripoint_bub_ms &pt, bool no_bashing,
 
     // Boarding moving vehicles is fine, unboarding isn't
     bool moved = false;
-    if( const optional_vpart_position vp = here.veh_at( pos ) ) {
-        const optional_vpart_position ovp = here.veh_at( p );
-        if( vp->vehicle().is_moving() &&
-            ( veh_pointer_or_null( ovp ) != veh_pointer_or_null( vp ) ||
-              !ovp.part_with_feature( VPFLAG_BOARDABLE, true ) ) ) {
-            move_pause();
-            return;
-        }
+    if( !npc_vehicle_allows_step( here, pos, p ) ) {
+        move_pause();
+        return;
     }
 
     Character &player_character = get_player_character();
@@ -6112,8 +6286,7 @@ void npc::move_to( const tripoint_bub_ms &pt, bool no_bashing,
                attitude_to( player_character ) == Attitude::HOSTILE ) {
         attack_air( p );
         move_pause();
-    } else if( here.passable_through( p ) &&
-               !here.has_flag( ter_furn_flag::TFLAG_DOOR, p ) ) {
+    } else if( npc_walkable_step( here, p ) ) {
         bool diag = trigdist && pos.x() != p.x() && pos.y() != p.y();
         if( is_mounted() ) {
             const double base_moves = run_cost( here.combined_movecost( pos, p ), diag ) *
@@ -6215,7 +6388,7 @@ void npc::move_to( const tripoint_bub_ms &pt, bool no_bashing,
             doors::lock_door( here, *this, old_pos );
         }
 
-        if( here.veh_at( p ).part_with_feature( VPFLAG_BOARDABLE, true ) ) {
+        if( npc_can_board( here.veh_at( p ) ) ) {
             here.board_vehicle( p, this );
         }
         here.creature_on_trap( *this );
