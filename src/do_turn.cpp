@@ -12795,11 +12795,13 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel(
                  outing.structural_admission.is_active() && outing.structural_admission.staged.empty() ) ) ||
             !bandit_live_world::crossing_receipt_allows_runtime_progress( outing ) ||
             ( outing.schema_version < 10 &&
-              !bandit_live_world::structural_outing_uses_frontier_route( outing ) ) ||
-            ( outing.selected_watch_kind == bandit_live_world::structural_watch_kind::none &&
-              !bandit_live_world::structural_outing_travels_to_target( outing ) ) ||
-            ( bandit_live_world::structural_outing_travels_to_target( outing ) ?
-              outing.shared_route.size() < 3 : outing.shared_route.size() != 5 ) ||
+              !bandit_live_world::structural_outing_uses_frontier_route( outing ) ) ) {
+            continue;
+        }
+        const bool travels_to_target = bandit_live_world::structural_outing_travels_to_target( outing );
+        if( ( outing.selected_watch_kind == bandit_live_world::structural_watch_kind::none &&
+              !travels_to_target ) ||
+            ( travels_to_target ? outing.shared_route.size() < 3 : outing.shared_route.size() != 5 ) ||
             outing.member_ids.empty() ) {
             continue;
         }
