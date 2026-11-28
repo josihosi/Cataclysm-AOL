@@ -4639,6 +4639,52 @@ static overmap_party_travel::actor_input live_bandit_travel_actor(
     return actor;
 }
 
+// An issued scavenge order can retain a bridge route even when its next
+// ramp is outside native movement. Look for a ground route before paying.
+static overmap_party_travel::actor_input live_bandit_scavenge_movement_actor(
+    bandit_live_world::active_outing_state &outing, const npc &member,
+    const tripoint_abs_omt &destination,
+    const std::unordered_set<tripoint_abs_omt> &exclusions = {} )
+{
+    auto actor = live_bandit_travel_actor( outing, member, destination, exclusions );
+    if( outing.kind != bandit_live_world::outing_kind::structural_sortie ||
+        outing.job_type != "scavenge" || actor.origin.z() != 0 || destination.z() != 0 ) {
+        return actor;
+    }
+    const auto cold_ramp = [origin = actor.origin]( const tripoint_abs_omt &next ) {
+        return next.z() == 1 && next.xy() == origin.xy() &&
+               !overmap_party_travel::omt_intersects_loaded_map( next ) &&
+               overmap_buffer.ter_existing( next )->get_type_id() ==
+               oter_type_str_id( "bridgehead_ramp" );
+    };
+    const auto terrain_valid = actor.valid;
+    actor.valid = [terrain_valid, cold_ramp]( const tripoint_abs_omt &from,
+    const tripoint_abs_omt &to ) {
+        return terrain_valid( from, to ) && !cold_ramp( to );
+    };
+    const auto &retained = actor.route->path.empty() ? member.omt_path : actor.route->path;
+    const auto next = std::find_if( retained.rbegin(), retained.rend(),
+    [origin = actor.origin]( const tripoint_abs_omt &p ) {
+        return p != origin;
+    } );
+    const bool retained_cold_ramp = next != retained.rend() && cold_ramp( *next );
+    const auto find = actor.find;
+    actor.find = [find, cold_ramp, retained_cold_ramp, exclusions]( const tripoint_abs_omt &from,
+    const tripoint_abs_omt &to ) {
+        if( !retained_cold_ramp ) {
+            auto path = find( from, to );
+            if( path.size() < 2 || !cold_ramp( path[path.size() - 2] ) ) {
+                return path;
+            }
+        }
+        return overmap_buffer.get_travel_path( from, to, overmap_path_params::for_npc(),
+        exclusions, []( const tripoint_abs_omt &p ) {
+            return p.z() != 0;
+        } ).points;
+    };
+    return actor;
+}
+
 static overmap_party_travel::transit_policy live_bandit_travel_policy( const int now )
 {
     overmap_party_travel::transit_policy policy;
@@ -24627,7 +24673,7 @@ void overmap_npc_move()
                 qualified = false;
                 break;
             }
-            auto actor = live_bandit_travel_actor( outing, *member, destination, exclusions );
+            auto actor = live_bandit_scavenge_movement_actor( outing, *member, destination, exclusions );
             const int level = actor.origin.z();
             actor.gate = [level]( const tripoint_abs_omt &next ) {
                 return next.z() != level || overmap_party_travel::omt_intersects_loaded_map( next ) ?
@@ -25068,7 +25114,7 @@ void overmap_npc_move()
                 const int active_turns = static_cast<int>( static_cast<std::int64_t>( *active_millis ) *
                                          to_turns<int>( 1_minutes ) / 60000 );
                 const int funded = active_time::funded_moves( body->get_moves(), body->get_speed(), active_turns );
-                auto actor = live_bandit_travel_actor( outing, *body, body->goal );
+                auto actor = live_bandit_scavenge_movement_actor( outing, *body, body->goal );
                 const int level = actor.origin.z();
                 actor.gate = [level]( const tripoint_abs_omt &next ) {
                     return next.z() != level || overmap_party_travel::omt_intersects_loaded_map( next ) ?

@@ -188,17 +188,32 @@ TEST_CASE( "cached NPC edge gate can veto a valid shared reroute",
     policy.fixed_edge_cost_millis = 300000;
     REQUIRE( prepare_transit( state, { actor }, policy ).status == transit_status::waiting );
     REQUIRE( state.work_millis == 60000 );
+    REQUIRE( state.from == std::vector<tripoint_abs_omt>{ origin } );
+    REQUIRE( state.to == std::vector<tripoint_abs_omt>{ old_edge } );
     old_open = false;
     ++policy.now;
     CHECK( prepare_transit( state, { actor }, policy ).status == transit_status::unavailable );
     CHECK( searches == 2 );
     CHECK( route.path.back() == detour );
+    CHECK( state.to == std::vector<tripoint_abs_omt>{ old_edge } );
     CHECK( state.work_millis == 60000 );
     ++policy.now;
     CHECK( prepare_transit( state, { actor }, policy ).status == transit_status::unavailable );
     CHECK( searches == 2 );
     actor.gate = []( const tripoint_abs_omt & ) { return edge_gate::distant; };
     CHECK( prepare_transit( state, { actor }, policy ).status == transit_status::waiting );
+    CHECK( state.from == std::vector<tripoint_abs_omt>{ origin } );
     CHECK( state.to == std::vector<tripoint_abs_omt>{ detour } );
     CHECK( state.work_millis == 60000 );
+    for( int interval = 2; interval < 5; ++interval ) {
+        ++policy.now;
+        CHECK( prepare_transit( state, { actor }, policy ).status == transit_status::waiting );
+        CHECK( state.work_millis == interval * 60000 );
+    }
+    ++policy.now;
+    const auto paid = prepare_transit( state, { actor }, policy );
+    REQUIRE( paid.status == transit_status::step );
+    REQUIRE( paid.next.size() == 1 );
+    CHECK( paid.next.front() == detour );
+    CHECK( state.work_millis == 0 );
 }
