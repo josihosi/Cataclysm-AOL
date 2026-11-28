@@ -191,9 +191,15 @@ def _send_cleanup_control(session_dir: Path, binding_id: str) -> None:
     if os.name == "nt":
         _atomic_json(session_dir / "controls" / "pre-descriptor-cleanup.json", control)
     else:
-        with (session_dir / "requests.fifo").open("w", encoding="utf-8") as sink:
-            sink.write(json.dumps(control) + "\n")
-            sink.flush()
+        # A ready status can outlive the FIFO reader. Never wait indefinitely
+        # for a reader, or claim the control was delivered after a failed write.
+        payload = (json.dumps(control) + "\n").encode("utf-8")
+        fd = os.open(session_dir / "requests.fifo", os.O_WRONLY | os.O_NONBLOCK)
+        try:
+            if os.write(fd, payload) != len(payload):
+                raise OSError("short cleanup control write")
+        finally:
+            os.close(fd)
 
 
 class FileBackedCockpitBridge:
@@ -1534,7 +1540,10 @@ class FileBackedCockpitBridge:
             from startup_harness import pid_is_alive
             bridge_pid = int(status.get("bridge_pid", 0) or 0)
             if bridge_pid > 0 and pid_is_alive(bridge_pid):
-                _send_cleanup_control(Path(session_dir), binding_id)
+                try:
+                    _send_cleanup_control(Path(session_dir), binding_id)
+                except OSError as error:
+                    return {"ok": False, "error": "cleanup_transport_unavailable", "detail": str(error)}
                 return {"ok": True, "cleanup": "requested"}
         if status.get("state") in {"process_dead", "bridge_failed", "terminalization_failed", "reentry_failed"}:
             bridge = FileBackedCockpitBridge(Path(session_dir), [], binding_id=binding_id)
@@ -1543,7 +1552,10 @@ class FileBackedCockpitBridge:
             return {"ok": cleanup.get("game", {}).get("status") in {
                 "terminated", "already_exited", "killed", "terminated_during_kill_escalation",
             }, "cleanup": cleanup}
-        _send_cleanup_control(Path(session_dir), binding_id)
+        try:
+            _send_cleanup_control(Path(session_dir), binding_id)
+        except OSError as error:
+            return {"ok": False, "error": "cleanup_transport_unavailable", "detail": str(error)}
         return {"ok": True, "cleanup": "requested"}
 
     @staticmethod

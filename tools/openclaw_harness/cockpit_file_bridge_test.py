@@ -1955,5 +1955,33 @@ for line in sys.stdin:
             self.assertIsNotNone(game.returncode)
 
 
+@unittest.skipIf(os.name == "nt", "POSIX FIFO transport")
+class CleanupFifoCliTest(unittest.TestCase):
+    def test_absent_and_present_reader_use_normal_cleanup_cli(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            fifo = directory / "requests.fifo"
+            os.mkfifo(fifo)
+            (directory / "status.json").write_text(json.dumps({"state": "ready", "binding_id": "bound-a"}))
+
+            def cleanup():
+                result = subprocess.run(
+                    [sys.executable, str(Path(__file__).with_name("cockpit_file_bridge.py")),
+                     "cleanup", "--session-dir", str(directory), "--binding-id", "bound-a"],
+                    capture_output=True, text=True, check=True, timeout=3)
+                return json.loads(result.stdout)
+
+            refused = cleanup()
+            self.assertFalse(refused["ok"])
+            self.assertEqual(refused["error"], "cleanup_transport_unavailable")
+            reader = os.open(fifo, os.O_RDONLY | os.O_NONBLOCK)
+            try:
+                self.assertEqual(cleanup(), {"ok": True, "cleanup": "requested"})
+                self.assertEqual(json.loads(os.read(reader, 4096)),
+                                 {"control": "cleanup", "binding_id": "bound-a"})
+            finally:
+                os.close(reader)
+
+
 if __name__ == "__main__":
     unittest.main()
